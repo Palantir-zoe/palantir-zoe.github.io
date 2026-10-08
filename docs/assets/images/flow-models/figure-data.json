@@ -1,0 +1,23 @@
+{
+  "boards": 5,
+  "image_pixels": [
+    2520,
+    1620
+  ],
+  "example": {
+    "ode": "x_dot=-x",
+    "x0": 2,
+    "h": 0.25,
+    "steps": 4,
+    "exact": 0.7357588823428847,
+    "euler": 0.6328125,
+    "heun": 0.7450580596923828
+  },
+  "matching_shaded_probability": 0.6826894921370857,
+  "shear": {
+    "map": "(z1,z2+t*sin(z1))",
+    "field": "(0,sin(x1))",
+    "det_jacobian": 1,
+    "seed": 20261008
+  }
+}
