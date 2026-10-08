@@ -38,6 +38,19 @@ def fetch(url):
         return response.read()
 
 
+def append_reference(html):
+    """Keep the article reference when importing a fresh export."""
+    snippet = ROOT / "tools/reference.html"
+    if not snippet.is_file() or re.search(r'\bid=["\']references["\']', html):
+        return html
+    reference = snippet.read_text(encoding="utf-8").strip()
+    for closing_tag in ("</article>", "</body>"):
+        position = html.lower().rfind(closing_tag)
+        if position != -1:
+            return html[:position] + "\n" + reference + "\n" + html[position:]
+    raise ValueError("Cannot place the reference: missing article/body closing tag")
+
+
 def local_assets(source, html):
     """Resolve referenced files within the export folder before changing the site."""
     parser = References()
@@ -124,6 +137,7 @@ def main():
         )
     if 'id="share-reading-layout"' not in html:
         html = re.sub(r"</head>", LAYOUT + "</head>", html, count=1, flags=re.I)
+    html = append_reference(html)
     for asset, relative in assets:
         target = output / relative
         target.parent.mkdir(parents=True, exist_ok=True)

@@ -17,6 +17,8 @@ python tools/import_html.py 'C:\笔记导出\学习笔记.html'
 
 导入工具更新 `docs/index.html`，收集图片和公式资源，并保留手机阅读优化。也可以直接编辑 `docs/index.html`；再次导入时，页面内容会以新的导出文件为准。
 
+页末参考文献保存在 `tools/reference.html`，重新导入 HTML 时会自动保留。
+
 ## 本地预览
 
 双击 `start-notes.cmd`，或运行：
