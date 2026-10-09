@@ -5,7 +5,12 @@ import json
 import re
 
 ROOT = Path(__file__).resolve().parents[1]
+SITE_TITLE = "泛科研学习笔记"
 RESERVED_SLUGS = {"assets", "posts", "index", "index-html", "guide", "tools"}
+SITE_NAV = re.compile(
+    r'<nav\b(?=[^>]*\bclass=["\'][^"\']*\bsite-nav\b)[^>]*>.*?</nav>',
+    re.I | re.S,
+)
 POST_NAV = re.compile(
     r'<nav\b(?=[^>]*\bclass=["\'][^"\']*\bpost-nav\b)[^>]*>.*?</nav>',
     re.I | re.S,
@@ -75,6 +80,24 @@ def with_navigation(html, nav):
     raise ValueError("Article needs an article or body closing tag for navigation")
 
 
+def with_site_branding(html, title):
+    """Set the article browser title and its controlled link to the site home."""
+    title_tag = '<title>' + escape(title + ' · ' + SITE_TITLE) + '</title>'
+    html, count = re.subn(r'<title\b[^>]*>.*?</title>', lambda _: title_tag,
+                         html, count=1, flags=re.I | re.S)
+    if not count:
+        html = re.sub(r'</head>', lambda _: title_tag + '</head>', html, count=1, flags=re.I)
+    nav = '<nav class="site-nav" aria-label="网站导航"><a href="../../">← ' + escape(SITE_TITLE) + '</a></nav>'
+    if SITE_NAV.search(html):
+        return SITE_NAV.sub(lambda _: nav, html, count=1)
+    html, count = re.subn(r'<article\b[^>]*>', lambda match: match.group(0) + nav,
+                         html, count=1, flags=re.I)
+    if not count:
+        html = re.sub(r'<body\b[^>]*>', lambda match: match.group(0) + nav,
+                      html, count=1, flags=re.I)
+    return html
+
+
 def rebuild_site(root=ROOT):
     root = Path(root)
     posts = load_posts(root)
@@ -84,7 +107,8 @@ def rebuild_site(root=ROOT):
     updates = []
     for index, post in enumerate(posts):
         page = root / "docs/posts" / post["slug"] / "index.html"
-        updates.append((page, with_navigation(page.read_text(encoding="utf-8"), navigation(posts, index))))
+        html = with_site_branding(page.read_text(encoding="utf-8"), post["title"])
+        updates.append((page, with_navigation(html, navigation(posts, index))))
     # Validate every article before writing any generated page.
     for page, html in updates:
         page.write_text(html, encoding="utf-8", newline="\n")

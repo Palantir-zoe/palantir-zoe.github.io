@@ -10,5 +10,11 @@
     "title": "Flow Models",
     "section": "第 2.1 节",
     "description": "从速度场和 ODE 到流映射，推导线性例子，并理解 Euler、Heun 与生成采样。"
+  },
+  {
+    "slug": "diffusion-models",
+    "title": "Diffusion Models",
+    "section": "第 2.2 节",
+    "description": "从布朗运动到 SDE，用 OU 过程理解漂移与噪声，再用 Euler–Maruyama 逐步生成样本。"
   }
 ]

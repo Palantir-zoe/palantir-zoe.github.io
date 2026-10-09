@@ -2,5 +2,5 @@
   "slug": "diffusion-models",
   "title": "Diffusion Models",
   "section": "第 2.2 节",
-  "description": "从布朗运动理解 SDE，推导 Ornstein–Uhlenbeck 过程，再用 Euler–Maruyama 实现采样。"
+  "description": "从布朗运动到 SDE，用 OU 过程理解漂移与噪声，再用 Euler–Maruyama 逐步生成样本。"
 }

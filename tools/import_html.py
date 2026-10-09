@@ -10,7 +10,7 @@ import re
 import shutil
 import json
 
-from blog import load_posts, rebuild_site, validate_slug
+from blog import load_posts, rebuild_site, validate_slug, with_site_branding
 
 ROOT = Path(__file__).resolve().parents[1]
 LAYOUT = """<style id="share-reading-layout">
@@ -63,8 +63,7 @@ def append_reference(html, slug):
 
 def prepare_article(html, title):
     """Keep the export layout while adding the blog title and home link."""
-    html = re.sub(r'<title\b[^>]*>.*?</title>', lambda _: '<title>' + escape(title) + '</title>',
-                  html, count=1, flags=re.I | re.S)
+    html = with_site_branding(html, title)
     html = re.sub(
         r'(<h1\b(?=[^>]*\bclass=["\'][^"\']*\bpage-title\b)[^>]*>).*?(</h1>)',
         lambda match: match.group(1) + escape(title) + match.group(2),
@@ -79,13 +78,6 @@ def prepare_article(html, title):
     if '../../assets/blog.css' not in html:
         html = re.sub(r'</head>', '<link rel="stylesheet" href="../../assets/blog.css"></head>',
                       html, count=1, flags=re.I)
-    if not re.search(r'<nav\b[^>]*\bclass=["\'][^"\']*\bsite-nav\b', html, re.I):
-        nav = '<nav class="site-nav" aria-label="网站导航"><a href="../../">← 返回文章目录</a></nav>'
-        html, count = re.subn(r'<article\b[^>]*>', lambda match: match.group(0) + nav,
-                             html, count=1, flags=re.I)
-        if not count:
-            html = re.sub(r'<body\b[^>]*>', lambda match: match.group(0) + nav,
-                          html, count=1, flags=re.I)
     return html
 
 

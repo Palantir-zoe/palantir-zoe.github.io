@@ -1,0 +1,90 @@
+{
+  "source_pdf_relative_to_workspace": "lecture_notes.pdf",
+  "source_sha256": "d61ddac4329c49043c633c47fadd5293204bce4c9ab28e994a04c79e7251e622",
+  "source_title": "An Introduction to Flow Matching and Diffusion Models",
+  "authors": [
+    "Peter Holderrieth",
+    "Ezra Erives"
+  ],
+  "source_year": 2026,
+  "source_page_size_points": [
+    612,
+    792
+  ],
+  "dpi": 300,
+  "coordinate_system": "PDF points (1/72 inch), top-left origin, [left, top, right, bottom]",
+  "renderer": "pdftoppm (Poppler)",
+  "renderer_version": "pdftoppm version 24.04.0\nCopyright 2005-2024 The Poppler Developers - http://poppler.freedesktop.org\nCopyright 1996-2011, 2022 Glyph & Cog, LLC",
+  "processing": "Original PDF regions rendered directly; no redrawing, OCR replacement, or resizing",
+  "reproduction_script": "learning-notes/tools/extract_diffusion_figures.py",
+  "figures": [
+    {
+      "filename": "lecture-figure-3-ou.png",
+      "pdf_page_1_based": 11,
+      "crop_points_top_left_ltrb": [
+        52,
+        78,
+        566,
+        280
+      ],
+      "content": "Figure 3: all four OU panels and the complete original caption",
+      "panel_parameters_left_to_right": [
+        {
+          "theta": 0.25,
+          "sigma": 0.0
+        },
+        {
+          "theta": 0.25,
+          "sigma": 0.25
+        },
+        {
+          "theta": 0.25,
+          "sigma": 0.5
+        },
+        {
+          "theta": 0.25,
+          "sigma": 1.0
+        }
+      ],
+      "horizontal_axis_time_range": [
+        0,
+        20
+      ],
+      "pixel_crop_ltrb": [
+        216,
+        325,
+        2359,
+        1167
+      ],
+      "image_size_px": [
+        2143,
+        842
+      ],
+      "draft_relative_path": "images/lecture-figure-3-ou.png",
+      "output_sha256": "00c78e2897556c363870655baabe0db967a60ade35a779c67b8428736fd86c8b"
+    },
+    {
+      "filename": "lecture-summary-7.png",
+      "pdf_page_1_based": 13,
+      "crop_points_top_left_ltrb": [
+        53,
+        339,
+        559,
+        563
+      ],
+      "content": "Complete original Summary 7 gray box, including its final sentence",
+      "pixel_crop_ltrb": [
+        220,
+        1412,
+        2330,
+        2346
+      ],
+      "image_size_px": [
+        2110,
+        934
+      ],
+      "draft_relative_path": "images/lecture-summary-7.png",
+      "output_sha256": "60ca6a8ca4f5b3bdd2425983193d6470ccbeff2142b50f26ee060f39ffaab6c6"
+    }
+  ]
+}
