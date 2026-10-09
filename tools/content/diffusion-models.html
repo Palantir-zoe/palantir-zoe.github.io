@@ -1,0 +1,110 @@
+<p>Flow Model 把初始样本沿着速度场连续移动：一旦起点确定，后面的轨迹也就确定了。Diffusion Model 保留这种运动规则，同时允许样本在运动途中不断受到随机扰动。理解这一节的关键，是区分两种随机性：<strong>起点随机</strong>，以及<strong>每一步运动本身也随机</strong>。</p>
+
+<h2 id="stochastic-process">1. 从确定轨迹到随机过程</h2>
+<p>ODE 的解是一条轨迹 \(t\mapsto X_t\)。如果给定同一个起点、使用同一个速度场，重复求解会得到同一条轨迹。SDE 是 <em>stochastic differential equation</em>，即随机微分方程；它描述的运动在途中持续引入随机性，因此即使起点相同，重复模拟也可能走出不同的路径。</p>
+<p>这时，我们用<strong>随机过程</strong>描述整个运动：</p>
+<p>\[ (X_t)_{0\leq t\leq 1}. \]</p>
+<p>固定一个时间 \(t\)，\(X_t\) 是一个随机变量，表示这一刻可能出现的位置。进行一次完整模拟，则会得到一条具体的样本轨迹。可以把它理解为：随机过程规定所有可能路径及其概率，而一次运行只实现其中一条路径。</p>
+<p>因此，“观察一条轨迹”和“观察一个时刻的分布”是两件事：前者沿着时间看一次运行，后者在同一时刻汇总许多次运行。生成模型最终关心的是后者——生成的许多样本整体是否符合数据分布，而不要求某一条路径必须到达预先指定的终点。</p>
+<p>这里的 \(X_t\in\mathbb R^d\) 不一定是物理位置，也可以是图像等高维数据的表示。时间 \(t\) 则表示生成过程进行到哪一步。</p>
+
+<h2 id="brownian-motion">2. 布朗运动：怎样产生连续的随机扰动</h2>
+<blockquote><p>You can think of a Brownian motion as a continuous random walk.</p></blockquote>
+<p><strong>布朗运动</strong>（Brownian motion，也称 Wiener process）可以直观地理解为连续时间的随机游走，记作 \(W_t\)。它从 \(W_0=0\) 开始，轨迹连续，但不断产生细碎、无规则的波动。构造 SDE 时，我们用它提供随机扰动。</p>
+<p>标准 \(d\) 维布朗运动最需要记住的是两条性质：</p>
+<ol>
+<li><p>对于 \(0\leq s&lt;t\)，增量满足 \(W_t-W_s\sim\mathcal N(0,(t-s)I_d)\)。它的均值为零，协方差等于经过的时间乘单位矩阵。</p></li>
+<li><p>互不重叠的时间区间上，增量相互独立。前一步朝哪个方向移动，不决定下一步的随机增量。</p></li>
+</ol>
+<p>注意，独立的是<strong>增量</strong>，并非不同时刻的位置。例如 \(W_{0.2}\) 已经包含了 \(W_{0.1}\) 的累积结果，二者通常并不独立。</p>
+<p>\(I_d\) 是 \(d\times d\) 单位矩阵，表示每个坐标的增量方差相同，不同坐标的高斯增量相互独立。“均值为零”也不表示每次增量都为零，而是重复采样后，正负方向在平均意义上没有偏好。</p>
+<h3>为什么每一步乘的是 \(\sqrt h\)？</h3>
+<p>在长度为 \(h\) 的时间间隔内，需要产生协方差为 \(hI_d\) 的增量。因此可以采样标准高斯噪声 \(\varepsilon_t\)，写成：</p>
+<p>\[ W_{t+h}=W_t+\sqrt h\,\varepsilon_t,\qquad \varepsilon_t\sim\mathcal N(0,I_d). \tag{5} \]</p>
+<p>每一步都重新、独立地采样 \(\varepsilon_t\)。以一维情况为例，因为 \(\operatorname{Var}(a\varepsilon)=a^2\operatorname{Var}(\varepsilon)\)，所以 \(\operatorname{Var}(\sqrt h\,\varepsilon)=h\)。</p>
+<p>还可以检查整个区间的波动大小。把长度为 1 的区间分成 \(n\) 步，令 \(h=1/n\)。独立增量的方差相加，得到：</p>
+<p>\[ \operatorname{Var}\!\left(\sum_{k=0}^{n-1}\sqrt h\,\varepsilon_k\right)=nh=1. \]</p>
+<p>无论步长多小，总体随机波动都保留下来。如果误写成 \(h\varepsilon_k\)，总方差就变成 \(nh^2=1/n\)，随着步长缩小趋于零。那样得到的极限不再具有我们需要的布朗波动。</p>
+<p>式 (5) 能精确生成指定时间网格上的布朗运动取值；有限个点以及点之间的连线，仍无法呈现连续路径的全部细节。</p>
+
+<h2 id="ode-to-sde">3. 从 ODE 到 SDE：漂移加上噪声</h2>
+<p>先回顾 ODE。在短时间 \(h\) 内，沿速度场运动的位移约为“速度乘时间”：</p>
+<p>\[ X_{t+h}\approx X_t+h\,u_t(X_t). \]</p>
+<p>现在加入由布朗运动驱动的随机位移。以 \(\sigma_t\geq 0\) 控制噪声强度，就得到局部更新的直观形式：</p>
+<p>\[ X_{t+h}=X_t+\underbrace{h\,u_t(X_t)}_{\text{漂移}}+\underbrace{\sigma_t(W_{t+h}-W_t)}_{\text{随机扰动}}+\underbrace{hR_t(h)}_{\text{局部余项}}. \tag{6} \]</p>
+<p>\(u_t(x)\) 称为<strong>漂移系数</strong>：给定当前状态后，它规定有方向的运动趋势。\(\sigma_t\) 称为<strong>扩散系数</strong>：它缩放每一步随机波动的幅度。本节采用只依赖时间的标量 \(\sigma_t\)，所以所有坐标受到相同强度的噪声。</p>
+<p>漂移项在不同运行中也可能不同，因为它依赖随机状态 \(X_t\)。“确定的运动趋势”是指<strong>在给定当前状态的条件下</strong>，这一项不需要再抽取一次新噪声。</p>
+<p>两种位移的时间尺度不同：漂移的典型大小是 \(O(h)\)，噪声的标准差是 \(O(\sqrt h)\)。噪声的条件协方差为 \(\sigma_t^2hI_d\)。虽然小步长下单步随机扰动很显眼，累计的漂移仍会影响整个分布的演化。</p>
+<p>还可以用条件均值理解两者的分工。已知 \(X_t=x\) 后，新抽取的噪声均值为零，所以短时间平均位移约为 \(h\,u_t(x)\)；围绕这份平均位移的随机波动，则由 \(\sigma_t\sqrt h\) 控制。前者回答“平均往哪里走”，后者回答“每次实际运动会偏离多少”。</p>
+<h3>为什么不能继续写普通导数？</h3>
+<p>布朗运动的路径几乎必然处处不可微。仅“含有随机性”并不足以导致不可微，关键是布朗运动的粗糙路径。一个直观提示是：</p>
+<p>\[ \operatorname{Var}\!\left(\frac{W_{t+h}-W_t}{h}\right)=\frac{1}{h}\quad\text{（一维）}. \]</p>
+<p>当 \(h\to0\) 时，差商的波动反而越来越大，因此不能把 \(\mathrm dW_t/\mathrm dt\) 当成普通函数。这只是理解不可微性的提示，并不是完整证明。</p>
+<p>SDE 通常写成下面的微分记号：</p>
+<p>\[ \mathrm dX_t=u_t(X_t)\,\mathrm dt+\sigma_t\,\mathrm dW_t,\qquad X_0=x_0. \tag{7} \]</p>
+<p>它的严谨含义是<strong>积分方程</strong>：</p>
+<p>\[ X_t=x_0+\int_0^t u_s(X_s)\,\mathrm ds+\int_0^t\sigma_s\,\mathrm dW_s. \]</p>
+<p>第一个积分累计漂移位移，第二个是 Itô 随机积分，累计经过缩放的布朗增量。理解这一节时，可以先把后者想成 \(\sum_k\sigma_{t_k}(W_{t_{k+1}}-W_{t_k})\) 在网格越来越细时的适当极限。</p>
+<p>在这份求和里，\(\mathrm dW_s\) 对应的是随机增量，\(\mathrm ds\) 对应的是时间长度。二者不能互换。尤其不能把随机积分理解成“先对布朗运动求普通导数，再做普通积分”，因为这样的路径导数不存在。</p>
+<p><small>严谨性补充：式 (6) 中若要求余项满足 \(\lVert R_t(h)\rVert_{L^2}\to0\)，对 \(\sigma_t\) 的时间正则性需要比仅仅连续更强的条件，例如连续可微。一般情况下，以积分方程作为 SDE 的定义更稳妥。</small></p>
+
+<h2 id="sde-uniqueness">4. Theorem 5：随机轨迹为什么仍然可以谈“唯一解”？</h2>
+<p>ODE 的流映射 \(\psi_t(x_0)\) 只需知道起点，就能给出时刻 \(t\) 的位置。对于 SDE，起点相同仍可能走出不同轨迹，所以<strong>仅靠 \(x_0\) 已经无法唯一确定终点</strong>；还必须指定这次运行经历了怎样的噪声。</p>
+<p>这并不意味着 SDE 没有唯一解。在适当条件下，例如漂移足够光滑、对位置的一阶导数有界，且 \(\sigma_t\) 连续，可以得到存在唯一性结论。这里“唯一”比较的是：<strong>相同初始值、同一条布朗运动路径</strong>所驱动的解，它们几乎必然相同。重新采样噪声后得到另一条轨迹，完全不矛盾。</p>
+<p>可以把噪声路径想成一份完整的外部输入：规则与起点相同，但输入不同，输出路径自然可能不同；唯一性要求的是，把这份输入也固定以后，运动结果没有歧义。它不是说所有随机实验都会得到同一结果。</p>
+<p>更一般的数学理论也会讨论随机流；这里需要区分的是，它不再是只输入起点的确定性流映射。如果 \(\sigma_t\equiv0\)，噪声项消失，方程就退化为 ODE。</p>
+
+<h2 id="ornstein-uhlenbeck">5. Example 6：Ornstein–Uhlenbeck 过程</h2>
+<p>继续使用线性速度场 \(u_t(x)=-\theta x\)，再加入强度恒定的噪声：</p>
+<p>\[ \mathrm dX_t=-\theta X_t\,\mathrm dt+\sigma\,\mathrm dW_t,\qquad \theta&gt;0. \tag{8} \]</p>
+<p>这就是 Ornstein–Uhlenbeck（OU）过程。漂移 \(-\theta X_t\) 总把状态拉向零；噪声则持续把状态推离当前位置。两种作用达到平衡后，样本仍然移动，但总体分布可以稳定下来。</p>
+<h3>先求出解：指数衰减加上累计噪声</h3>
+<p>考虑一维情形，初始值 \(x_0\) 固定，\(\sigma\geq0\)。像解线性 ODE 一样，引入积分因子 \(e^{\theta t}\)。因为这个因子是确定的光滑函数，乘积公式给出：</p>
+<p>\[ \begin{aligned} \mathrm d(e^{\theta t}X_t)&=\theta e^{\theta t}X_t\,\mathrm dt+e^{\theta t}\,\mathrm dX_t\\ &=\sigma e^{\theta t}\,\mathrm dW_t. \end{aligned} \]</p>
+<p>两项漂移正好抵消。从 0 积分到 \(t\)，再除以 \(e^{\theta t}\)，得到：</p>
+<p>\[ X_t=e^{-\theta t}x_0+\sigma\int_0^t e^{-\theta(t-s)}\,\mathrm dW_s. \]</p>
+<p>第一项是初始状态的影响，随时间指数衰减。第二项累计沿途噪声：时刻 \(s\) 产生的噪声，在到达 \(t\) 之前，也会受到 \(e^{-\theta(t-s)}\) 的衰减。</p>
+<p>这个表达式也能立即检查初始条件：当 \(t=0\) 时，指数等于 1，积分区间长度为零，因此 \(X_0=x_0\)。随着时间推进，早期扰动逐渐被回拉作用削弱，但新的扰动不断加入，所以不能把“初始影响消失”理解成“所有随机性消失”。</p>
+<h3>再看分布：均值回到零，方差趋于平衡</h3>
+<p>该随机积分的均值为零，因此：</p>
+<p>\[ \mathbb E[X_t]=e^{-\theta t}x_0. \]</p>
+<p>方差可以用 Itô 等距性质计算。对于确定的积分权重 \(f\)，布朗增量的独立性在极限中给出 \(\operatorname{Var}(\int_0^t f(s)\,\mathrm dW_s)=\int_0^t f(s)^2\,\mathrm ds\)。于是：</p>
+<p>\[ \begin{aligned} \operatorname{Var}(X_t)&=\sigma^2\int_0^t e^{-2\theta(t-s)}\,\mathrm ds\\ &=\frac{\sigma^2}{2\theta}\bigl(1-e^{-2\theta t}\bigr). \end{aligned} \]</p>
+<p>确定权重的布朗随机积分是高斯的，所以整个分布为：</p>
+<p>\[ X_t\sim\mathcal N\!\left(e^{-\theta t}x_0,\ \frac{\sigma^2}{2\theta}(1-e^{-2\theta t})\right). \]</p>
+<p>将这个过程延续到任意长的时间，当 \(t\to\infty\) 时：</p>
+<p>\[ \mathcal L(X_t)\longrightarrow\mathcal N\!\left(0,\frac{\sigma^2}{2\theta}\right). \]</p>
+<p>这里是<strong>分布趋于稳定</strong>，不是一条轨迹停在零点。\(\sigma&gt;0\) 时，每次运行仍会持续波动；把许多次运行在同一时刻的取值画成直方图，才会看到逐渐稳定的高斯形状。\(\sigma\) 越大，分布越宽；\(\theta\) 越大，回拉越强，分布越窄。令 \(\sigma=0\)，就重新得到 \(X_t=e^{-\theta t}x_0\)。</p>
+
+<h2 id="euler-maruyama">6. 数值模拟：Euler–Maruyama 方法</h2>
+<p>大多数 SDE 没有像 OU 过程这样方便的解析解。实际计算时，把时间分成小步，冻结一步内的漂移和扩散系数，再采样这一段的布朗增量：</p>
+<p>\[ X_{t+h}\approx X_t+h\,u_t(X_t)+\sigma_t\sqrt h\,\varepsilon_t,\qquad \varepsilon_t\sim\mathcal N(0,I_d). \tag{9} \]</p>
+<p>这就是 Euler–Maruyama 方法。与 ODE 的 Euler 方法相比，只多了一个独立采样的高斯增量。这里用近似号强调：数值状态通常只是连续 SDE 解的近似；算法中的赋值会直接使用右边更新。</p>
+<p>例如，取 \(u_t(x)=-x\)、\(x_0=2\)、\(\sigma=0.5\)、\(h=0.1\)，第一步为：</p>
+<p>\[ X_{0.1}\approx2+0.1(-2)+0.5\sqrt{0.1}\,\varepsilon_0=1.8+0.1581\varepsilon_0. \]</p>
+<p>若以 \(\varepsilon_0=1\) 演示计算，结果约为 \(1.9581\)；若以 \(\varepsilon_0=-1\) 演示，则约为 \(1.6419\)。两次都有把 2 拉向零的漂移，但这一步噪声可能顺着漂移，也可能抵消它。下一步要在新的状态上计算漂移，并重新采样噪声。</p>
+<p>实际采样的高斯噪声当然不限于这两个值。若把起点固定为 2 并重复模拟第一步，得到的是一个均值为 \(1.8\)、方差为 \(0.5^2\times0.1=0.025\) 的高斯分布。这也把单次更新与分布变化联系起来：算法产生一个具体数值，许多次运行共同呈现该步的概率分布。</p>
+<p>需要区分<strong>模型本身的随机性</strong>与<strong>离散计算的误差</strong>。减小步长是为了更准确地模拟 SDE，不是为了消除 SDE 的随机性。</p>
+
+<h2 id="diffusion-model">7. 用 SDE 构造 Diffusion Model</h2>
+<p>生成建模的目标仍然是：从容易采样的初始分布出发，经过一段运动，让终点样本的分布接近真实数据分布。现在用神经网络表示漂移：</p>
+<p>\[ u_t^\theta(x)=\operatorname{NN}_\theta(x,t),\qquad \mathrm dX_t=u_t^\theta(X_t)\,\mathrm dt+\sigma_t\,\mathrm dW_t,\qquad X_0\sim p_{\mathrm{init}}. \]</p>
+<p>这里 \(\theta\) 表示网络参数，与 OU 例子中表示回拉强度的标量 \(\theta\) 角色不同。初始样本通常独立于布朗运动。我们希望经过训练后，\(X_1\) 的分布接近 \(p_{\mathrm{data}}\)。</p>
+<p>记 \(p_t\) 为时刻 \(t\) 的状态分布，就可以把整个过程看成从 \(p_0=p_{\mathrm{init}}\) 出发，经过一系列中间分布，最后到达接近数据分布的 \(p_1\)。一条 SDE 路径描述一个样本怎样变化，所有可能路径合在一起，则决定分布怎样变化。</p>
+<p>网络接收当前状态和时间，输出此刻的漂移方向；预先设定的 \(\sigma_t\) 决定这时加入多少随机性。<strong>仅仅添加噪声并不能自动生成数据</strong>，还需要学到与目标分布相匹配的漂移。本节先明确模型及采样方式，如何训练这个网络是后续问题。</p>
+
+<h2 id="sampling-algorithm">8. Algorithm 2：一步步采样到终点</h2>
+<p>给定训练好的网络、步数 \(n\) 和噪声强度函数 \(\sigma(t)\)，取 \(h=1/n\)，先采样一次初始状态，再重复执行 Euler–Maruyama 更新：</p>
+<pre><code>h = 1.0 / n
+x = sample(p_init)
+for k in range(n):
+    t = k * h
+    epsilon = sample_standard_normal(d)
+    x = x + h * model(x, t) + sigma(t) * sqrt(h) * epsilon
+return x</code></pre>
+<p>每一步都重新采样独立的 \(\varepsilon\)，而网络参数在整个采样期间保持不变。最终返回的是对时间 1 处样本的数值近似。</p>
+<p>循环中的 \(t\) 也必须作为网络输入：同一个状态出现在不同阶段时，所需要的漂移可能不同。步数 \(n\) 决定时间划分的精细程度，也决定需要调用网络多少次。增加步数通常有助于减小离散误差，但并不替代对网络的训练。</p>
+<h3 id="summary-7">Summary 7：两类模型的关系</h3>
+<p>至此，可以把两类模型并排记下来：</p>
+<p>\[ \begin{aligned} \text{Flow Model:}\quad &amp;\mathrm dX_t=u_t^\theta(X_t)\,\mathrm dt,\\ \text{Diffusion Model:}\quad &amp;\mathrm dX_t=u_t^\theta(X_t)\,\mathrm dt+\sigma_t\,\mathrm dW_t. \end{aligned} \]</p>
+<p>“固定的扩散系数”通常指预先指定、不在这里学习的时间函数，并不要求它在所有时刻都相等。令 \(\sigma_t\equiv0\)，SDE 在形式上退化为 ODE；但对于已经训练好的某个扩散模型，直接删除噪声项一般会改变终点分布，不能据此认为采样效果保持不变。</p>
