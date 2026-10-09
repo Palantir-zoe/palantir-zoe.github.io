@@ -5,7 +5,9 @@
 - 仓库：<https://github.com/Palantir-zoe/palantir-zoe.github.io>
 - 公开网址：<https://palantir-zoe.github.io/>
 
-当前文章分别位于 `docs/posts/introduction/`、`docs/posts/flow-models/`、`docs/posts/diffusion-models/`，各目录内的 `index.html` 是对应正文。
+当前公开文章分别位于 `docs/posts/introduction/`、`docs/posts/flow-models/`，各目录内的 `index.html` 是对应正文。
+
+Diffusion Models 暂未完成审核，完整页面与目录信息保存在 `drafts/diffusion-models/`，不包含在 GitHub Pages 发布目录中。审核通过后，将该目录的 `index.html` 放回 `docs/posts/diffusion-models/`，把 `post.json` 中的条目加回 `docs/posts.json`，再运行 `python tools/blog.py` 并提交发布即可恢复原网址。
 
 ## 更新内容
 
