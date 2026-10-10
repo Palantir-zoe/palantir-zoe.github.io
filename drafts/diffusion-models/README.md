@@ -10,7 +10,7 @@
 
 此命令使用本机已有的 Playwright 环境和 Edge，将公式预先渲染为 HTML，更新本地 `index.html` 和 `preview.html`，标记为待审核，不修改已经上线的 `docs/`。源文件和渲染页面需要一起保留。
 
-`images/` 保存原文 Figure 3 和 Summary 7 的 300 DPI 截图，两张图均可点击打开原尺寸。来源页码、裁切坐标和文件哈希记录在 `images/lecture-original-figures.json`；复现脚本为 `tools/extract_diffusion_figures.py`。发布时会将图片复制到文章目录。
+`images/` 保存原文 Figure 3、Algorithm 2 和 Summary 7 的 300 DPI 截图，均可点击打开原尺寸。Algorithm 2 按初始化、逐步更新和返回样本附中文讲解。来源页码、裁切坐标和文件哈希记录在 `images/lecture-original-figures.json`；复现脚本为 `tools/extract_diffusion_figures.py`。发布时会将图片复制到文章目录。
 
 内容核查完成后，在仓库根目录运行：
 

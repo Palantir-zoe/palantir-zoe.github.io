@@ -1,4 +1,4 @@
-"""Render two original lecture excerpts without redrawing or re-typesetting.
+"""Render original lecture excerpts without redrawing or re-typesetting.
 
 Run from any directory: python learning-notes/tools/extract_diffusion_figures.py
 Requires Poppler's pdftoppm and Pillow. Page coordinates use PDF points measured
@@ -43,6 +43,12 @@ EXCERPTS = (
         "pdf_page_1_based": 13,
         "crop_points_top_left_ltrb": [53, 339, 559, 563],
         "content": "Complete original Summary 7 gray box, including its final sentence",
+    },
+    {
+        "filename": "lecture-algorithm-2.png",
+        "pdf_page_1_based": 13,
+        "crop_points_top_left_ltrb": [53, 78, 559, 228],
+        "content": "Complete original Algorithm 2, including title, Require, lines 1-9, and horizontal rules",
     },
 )
 

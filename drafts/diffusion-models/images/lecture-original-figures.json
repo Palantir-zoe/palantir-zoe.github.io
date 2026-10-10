@@ -85,6 +85,29 @@
       ],
       "draft_relative_path": "images/lecture-summary-7.png",
       "output_sha256": "60ca6a8ca4f5b3bdd2425983193d6470ccbeff2142b50f26ee060f39ffaab6c6"
+    },
+    {
+      "filename": "lecture-algorithm-2.png",
+      "pdf_page_1_based": 13,
+      "crop_points_top_left_ltrb": [
+        53,
+        78,
+        559,
+        228
+      ],
+      "content": "Complete original Algorithm 2, including title, Require, lines 1-9, and horizontal rules",
+      "pixel_crop_ltrb": [
+        220,
+        325,
+        2330,
+        951
+      ],
+      "image_size_px": [
+        2110,
+        626
+      ],
+      "draft_relative_path": "images/lecture-algorithm-2.png",
+      "output_sha256": "a3d73f749df15bf3813b9a1f2711fbec1466b2771734267e1d16c565aad63edc"
     }
   ]
 }

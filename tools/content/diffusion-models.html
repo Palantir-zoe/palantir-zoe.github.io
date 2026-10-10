@@ -170,20 +170,20 @@ X_0&amp;\sim p_{\mathrm{init}} &amp;&amp;\text{random initialization},\\
 <p>记 \(X_t\) 的分布为 \(p_t\)，目标是让 \(p_0=p_{\mathrm{init}}\) 逐渐变成接近 \(p_{\mathrm{data}}\) 的 \(p_1\)。训练负责调整漂移网络；采样时参数固定，只推进状态和时间，并抽取新的噪声。初始样本通常与后续布朗运动独立。</p>
 
 <h2 id="sampling-algorithm">Algorithm 2：从 Diffusion Model 采样</h2>
-<blockquote><p>Sampling from a Diffusion Model (Euler-Maruyama method)</p><p>Require: Neural network \(u_t^\theta\), number of steps \(n\), diffusion coefficient \(\sigma_t\).</p></blockquote>
-<p>给定训练好的网络、步数 \(n\)、噪声强度函数 \(\sigma_t\) 和初始分布，按下面九行执行。第 5—7 行是每一步重复的操作。</p>
-<ol>
-<li><p><strong>Set \(t=0\).</strong> 从生成过程的起始时间开始。</p></li>
-<li><p><strong>Set step size \(h=1/n\).</strong> 将区间 \([0,1]\) 等分为 \(n\) 步。</p></li>
-<li><p><strong>Draw a sample \(X_0\sim p_{\mathrm{init}}\).</strong> 抽取这次生成的初始样本；这一步只做一次。</p></li>
-<li><p><strong>for \(i=1,\ldots,n\) do.</strong> 开始逐步推进，总共执行 \(n\) 次。</p></li>
-<li><p><strong>Draw a sample \(\varepsilon\sim\mathcal N(0,I_d)\).</strong> 每一轮重新独立抽取一份 \(d\) 维标准高斯噪声。</p></li>
-<li><p>\[X_{t+h}=X_t+h\,u_t^\theta(X_t)+\sigma_t\sqrt h\,\varepsilon.\]</p><p>先用当前状态和时间计算网络输出，再加入漂移位移和随机位移。这一行的 \(X_t\) 仍采用算法的数值状态记号。</p></li>
-<li><p><strong>Update \(t\leftarrow t+h\).</strong> 时间前进一格，刚算出的状态成为下一轮的当前状态。</p></li>
-<li><p><strong>end for.</strong> 重复第 5—7 行，直到完成 \(n\) 次更新。</p></li>
-<li><p><strong>return \(X_1\).</strong> 返回终点的数值近似，作为一个生成样本。</p></li>
-</ol>
-<p>一次生成只抽取一次起点，但每轮都抽取新噪声。网络共调用 \(n\) 次，最后返回终点的数值近似。</p>
+<p>把训练好的漂移网络代入 Euler–Maruyama 更新式，就得到完整的生成过程。给定网络 \(u_t^\theta\)、步数 \(n\)、预设的噪声强度函数 \(\sigma_t\) 和初始分布，按下面的算法采样；过程中网络参数保持固定。</p>
+<figure class="lecture-figure" id="algorithm-2-original">
+<a href="images/lecture-algorithm-2.png" target="_blank" rel="noopener noreferrer" aria-label="打开 Algorithm 2 原尺寸图片"><img src="images/lecture-algorithm-2.png" alt="原文 Algorithm 2：设置时间和步长，从初始分布抽取起点；每一步独立抽取高斯噪声，按 Euler–Maruyama 公式更新状态和时间，重复 n 次后返回终点样本。" width="2110" height="626" loading="lazy"></a>
+<figcaption>Algorithm 2，原文第 13 页。Peter Holderrieth &amp; Ezra Erives，MIT 6.S184（2026）。<a href="https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=13" target="_blank" rel="noopener noreferrer">查看来源</a> · 点击图片可放大。</figcaption>
+</figure>
+<h3>第 1–3 行：初始化一次</h3>
+<p>令 \(t=0\)、\(h=1/n\)，把时间区间 \([0,1]\) 分成 \(n\) 步，再抽取起点 \(X_0\sim p_{\mathrm{init}}\)。例如初始分布是标准高斯时，这次生成就从一份高斯噪声开始。<strong>初始样本只抽一次，之后不断更新这个样本的状态。</strong></p>
+<h3>第 4–8 行：重复“预测漂移、加入噪声、推进时间”</h3>
+<p>每一轮先独立抽取新的 \(\varepsilon\sim\mathcal N(0,I_d)\)，然后执行第 6 行的核心更新：</p>
+<p>\[X_{t+h}=X_t+\underbrace{h\,u_t^\theta(X_t)}_{\text{漂移位移}}+\underbrace{\sigma_t\sqrt h\,\varepsilon}_{\text{随机位移}}.\]</p>
+<p>\(u_t^\theta(X_t)\) 由当前位置和时间计算，乘以步长 \(h\) 后给出这一小步的漂移位移；另一项加入新的随机位移，大小由 \(\sigma_t\sqrt h\) 控制。随后令 \(t\leftarrow t+h\)，下一轮使用<strong>刚更新的状态</strong>重新查询网络、抽取噪声。</p>
+<h3>第 9 行：返回终点样本</h3>
+<p>完成 \(n\) 次更新后，时间到达 1，返回 \(X_1\) 作为这次生成的结果。图中的 \(X_t\) 是算法的数值状态，有限步长下得到的是连续 SDE 解的近似。</p>
+<p class="note-focus"><strong>一次生成只抽取一次起点，每一小步都抽取新的噪声。</strong>网络共调用 \(n\) 次，逐步把初始样本更新为终点样本。</p>
 <details class="note-detail"><summary>补充：对应的伪代码</summary>
 <pre><code>h = 1.0 / n
 x = sample(p_init)
