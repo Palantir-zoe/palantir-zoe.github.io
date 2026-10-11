@@ -48,6 +48,7 @@ def append_reference(html, slug):
         "introduction": "第 1 章 Introduction",
         "flow-models": "第 2.1 节 Flow Models",
         "diffusion-models": "第 2.2 节 Diffusion Models",
+        "flow-matching": "第 3 章 Flow Matching，3.1–3.3 节",
     }
     snippet = ROOT / "tools/reference.html"
     if slug not in scopes or not snippet.is_file() or re.search(r'\bid=["\']references["\']', html):

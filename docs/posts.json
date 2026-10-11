@@ -16,5 +16,11 @@
     "title": "Diffusion Models",
     "section": "第 2.2 节",
     "description": "从布朗运动到 SDE，用 OU 过程理解漂移与噪声，再用 Euler–Maruyama 逐步生成样本。"
+  },
+  {
+    "slug": "flow-matching",
+    "title": "Flow Matching",
+    "section": "第 3 章",
+    "description": "从条件与边缘概率路径出发，构造目标速度，理解为什么条件速度回归能学到边缘速度，以及怎样训练和生成样本。"
   }
 ]

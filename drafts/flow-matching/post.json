@@ -1,0 +1,6 @@
+{
+  "slug": "flow-matching",
+  "title": "Flow Matching",
+  "section": "第 3 章",
+  "description": "从条件与边缘概率路径出发，构造目标速度，理解为什么条件速度回归能学到边缘速度，以及怎样训练和生成样本。"
+}

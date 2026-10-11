@@ -1,0 +1,372 @@
+{
+  "source_pdf_relative_to_workspace": "lecture_notes.pdf",
+  "source_sha256": "d61ddac4329c49043c633c47fadd5293204bce4c9ab28e994a04c79e7251e622",
+  "source_title": "An Introduction to Flow Matching and Diffusion Models",
+  "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf",
+  "authors": [
+    "Peter Holderrieth",
+    "Ezra Erives"
+  ],
+  "source_year": 2026,
+  "source_page_size_points": [
+    612,
+    792
+  ],
+  "dpi": 300,
+  "coordinate_system": "PDF points (1/72 inch), top-left origin, [left, top, right, bottom]",
+  "renderer": "pdftoppm (Poppler)",
+  "renderer_version": "pdftoppm version 24.04.0\nCopyright 2005-2024 The Poppler Developers - http://poppler.freedesktop.org\nCopyright 1996-2011, 2022 Glyph & Cog, LLC",
+  "processing": "Original PDF regions rendered directly; no redrawing, OCR replacement, or resizing",
+  "reproduction_script": "learning-notes/tools/extract_flow_matching_figures.py",
+  "figures": [
+    {
+      "filename": "lecture-theorem-9.png",
+      "pdf_page_1_based": 16,
+      "crop_points_top_left_ltrb": [
+        54,
+        519,
+        558,
+        693
+      ],
+      "content": "Complete Theorem 9 (Marginalization trick), including Equations 18-19 and the endpoint conclusion",
+      "box_id": "theorem-9",
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=16",
+      "pixel_crop_ltrb": [
+        225,
+        2162,
+        2325,
+        2888
+      ],
+      "image_size_px": [
+        2100,
+        726
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/lecture-theorem-9.png",
+      "output_sha256": "8e5288cbe1e1d5ed4f2fcf0a99a620e58db29e3daf0c29bd659d96626d2ba973"
+    },
+    {
+      "filename": "lecture-theorem-11.png",
+      "pdf_page_1_based": 19,
+      "crop_points_top_left_ltrb": [
+        54,
+        79,
+        558,
+        198
+      ],
+      "content": "Complete Theorem 11 (Continuity Equation), including the initial condition, iff statement, Equation 23 and derivative definition",
+      "box_id": "theorem-11",
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=19",
+      "pixel_crop_ltrb": [
+        225,
+        329,
+        2325,
+        826
+      ],
+      "image_size_px": [
+        2100,
+        497
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/lecture-theorem-11.png",
+      "output_sha256": "9e3cb1f1646c47031589f293a469a13def005a249d1b55569ae35e1c24fc6456"
+    },
+    {
+      "filename": "lecture-theorem-12.png",
+      "pdf_page_1_based": 20,
+      "crop_points_top_left_ltrb": [
+        54,
+        369,
+        558,
+        552
+      ],
+      "content": "Complete Theorem 12, including both loss and gradient equalities and the expressivity assumption",
+      "box_id": "theorem-12",
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=20",
+      "pixel_crop_ltrb": [
+        225,
+        1537,
+        2325,
+        2300
+      ],
+      "image_size_px": [
+        2100,
+        763
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/lecture-theorem-12.png",
+      "output_sha256": "4868805ef80c9ecfa3dcc1d8eac7f2afa182ab77e45c8b20b14b2b8de3fb34b9"
+    },
+    {
+      "filename": "lecture-summary-14-p23.png",
+      "pdf_page_1_based": 23,
+      "crop_points_top_left_ltrb": [
+        54,
+        414,
+        558,
+        694
+      ],
+      "content": "Summary 14, part 1: Flow Matching construction and training, including Equations 32-34",
+      "box_id": "summary-14",
+      "part": 1,
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=23",
+      "pixel_crop_ltrb": [
+        225,
+        1725,
+        2325,
+        2892
+      ],
+      "image_size_px": [
+        2100,
+        1167
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/lecture-summary-14-p23.png",
+      "output_sha256": "e3443c110e6f081bed6d68e4d989465aea9dfd3b1bcffdc00eb8dc00b7453da5"
+    },
+    {
+      "filename": "lecture-summary-14-p24.png",
+      "pdf_page_1_based": 24,
+      "crop_points_top_left_ltrb": [
+        54,
+        79,
+        558,
+        226
+      ],
+      "content": "Summary 14, part 2: Gaussian formulas 35-37 and all noise scheduler conditions",
+      "box_id": "summary-14",
+      "part": 2,
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=24",
+      "pixel_crop_ltrb": [
+        225,
+        329,
+        2325,
+        942
+      ],
+      "image_size_px": [
+        2100,
+        613
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/lecture-summary-14-p24.png",
+      "output_sha256": "39f9e941a70673e660a56cb40d78481678cc1712e12521aaf7c8fc0482d9eb05"
+    },
+    {
+      "filename": "figure-4-noise-to-data.png",
+      "pdf_page_1_based": 14,
+      "crop_points_top_left_ltrb": [
+        53,
+        316,
+        562,
+        460
+      ],
+      "content": "Figure 4: five grids of digit images along a Gaussian conditional probability path, with the complete original caption",
+      "reading_notes": [
+        "Each grid contains nine individual image samples, not a two-dimensional histogram of the data distribution.",
+        "Each original digit image is a data point of dimension 32 x 32 = 1024.",
+        "Left to right shows the progression from noise to digit images; the original figure does not label its five time values."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=14",
+      "pixel_crop_ltrb": [
+        220,
+        1316,
+        2342,
+        1917
+      ],
+      "image_size_px": [
+        2122,
+        601
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/figure-4-noise-to-data.png",
+      "output_sha256": "2b9e2f0c9bb871fafdbbbb1ff3cb7f9f6a419a7ba9b0d4032bb0848dd9f92109"
+    },
+    {
+      "filename": "figure-5-probability-paths.png",
+      "pdf_page_1_based": 15,
+      "crop_points_top_left_ltrb": [
+        53,
+        80,
+        561,
+        342
+      ],
+      "content": "Figure 5: complete conditional and marginal probability-path rows and original caption",
+      "time_labels_left_to_right": [
+        0,
+        0.25,
+        0.5,
+        0.75,
+        1
+      ],
+      "noise_schedulers": {
+        "alpha_t": "t",
+        "beta_t": "1 - t"
+      },
+      "reading_notes": [
+        "The top row conditions on one fixed data point z and shrinks a Gaussian to the point mass at z.",
+        "The bottom row marginalizes over data points and evolves a Gaussian into the two-dimensional checkerboard data distribution.",
+        "The colored panels are distribution histograms; they do not depict individual image samples as Figure 4 does."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=15",
+      "pixel_crop_ltrb": [
+        220,
+        333,
+        2338,
+        1425
+      ],
+      "image_size_px": [
+        2118,
+        1092
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/figure-5-probability-paths.png",
+      "output_sha256": "31efca4839162752dfdc3cb679f0b84fc7a3d0f5bde60698c67d7a2dee506f2e"
+    },
+    {
+      "filename": "figure-6-vector-fields.png",
+      "pdf_page_1_based": 17,
+      "crop_points_top_left_ltrb": [
+        53,
+        78,
+        561,
+        485
+      ],
+      "content": "Figure 6: all six conditional/marginal ODE comparison panels with the complete original caption",
+      "rows_top_to_bottom": [
+        "conditional probability path",
+        "marginal probability path"
+      ],
+      "columns_left_to_right": [
+        "ground-truth samples",
+        "ODE samples over time",
+        "ODE trajectories"
+      ],
+      "reading_notes": [
+        "The background data distribution is blue, while the initial Gaussian is red.",
+        "Conditioning on the red-star target z gives trajectories towards that one target; marginal trajectories distribute samples among the data modes.",
+        "Compare distributions in the first two columns rather than demanding pointwise equality of individual sampled trajectories.",
+        "The original bottom-middle and bottom-right panel titles explicitly say Learned Marginal ODE."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=17",
+      "pixel_crop_ltrb": [
+        220,
+        325,
+        2338,
+        2021
+      ],
+      "image_size_px": [
+        2118,
+        1696
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/figure-6-vector-fields.png",
+      "output_sha256": "c65548b1ec26eb2ec1ee915f6d0a42fcb99c98308645f336aa1e2321c65e4376"
+    },
+    {
+      "filename": "algorithm-3-training.png",
+      "pdf_page_1_based": 22,
+      "crop_points_top_left_ltrb": [
+        53,
+        79,
+        561,
+        290
+      ],
+      "content": "Complete original Algorithm 3, including heading, Require line, steps 1-8, general-case formulas, and enclosing horizontal rules",
+      "reading_notes": [
+        "Sample a data point z, a time t, and Gaussian noise epsilon.",
+        "For the Gaussian CondOT path, construct x = t z + (1 - t) epsilon and regress the neural vector field onto z - epsilon.",
+        "The network parameters are updated during this training procedure; the displayed training loop does not solve an ODE.",
+        "The source heading uses the compact variance notation (1 - t)^2; in d dimensions the corresponding covariance is (1 - t)^2 I_d."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=22",
+      "pixel_crop_ltrb": [
+        220,
+        329,
+        2338,
+        1209
+      ],
+      "image_size_px": [
+        2118,
+        880
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/algorithm-3-training.png",
+      "output_sha256": "6e848ddf352e81ab5da85416bdb65eea645e78450f276316e07a0bba1206afdf"
+    },
+    {
+      "filename": "figure-7-trained-flow.png",
+      "pdf_page_1_based": 23,
+      "crop_points_top_left_ltrb": [
+        53,
+        78,
+        561,
+        355
+      ],
+      "content": "Figure 7: both ground-truth and trained-flow histogram rows with the complete original caption",
+      "ground_truth_time_labels": [
+        0,
+        0.25,
+        0.5,
+        0.75,
+        1
+      ],
+      "learned_time_labels": [
+        0,
+        0.25,
+        0.51,
+        0.76,
+        1
+      ],
+      "reading_notes": [
+        "The top row shows samples from the prescribed marginal probability path.",
+        "The bottom row shows samples obtained by simulating the trained flow-matching ODE.",
+        "The corresponding distributions approximately match after training; the figure is not a claim that individual sample paths are identical.",
+        "The source caption attributes remaining differences to training error; the plotted time labels also reflect the simulation grid."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=23",
+      "pixel_crop_ltrb": [
+        220,
+        325,
+        2338,
+        1480
+      ],
+      "image_size_px": [
+        2118,
+        1155
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/figure-7-trained-flow.png",
+      "output_sha256": "f2c91da80976e59125961f614ad4b88ab73168b9c8e9d9faac451b13187e3e5e"
+    }
+  ]
+}

@@ -7,8 +7,11 @@
 | Introduction | `docs/posts/introduction/index.html` | <https://palantir-zoe.github.io/posts/introduction/> |
 | Flow Models | `docs/posts/flow-models/index.html` | <https://palantir-zoe.github.io/posts/flow-models/> |
 | Diffusion Models | `docs/posts/diffusion-models/index.html` | <https://palantir-zoe.github.io/posts/diffusion-models/> |
+| Flow Matching | `docs/posts/flow-matching/index.html` | <https://palantir-zoe.github.io/posts/flow-matching/> |
 
 Diffusion Models 已审核发布。可编辑正文在 `tools/content/diffusion-models.html`，编辑工作副本和本地预览在 `drafts/diffusion-models/`。发布命令与图片维护方式见仓库 README。
+
+Flow Matching 已审核发布。可编辑正文在 `tools/content/flow-matching.html`，本地预览在 `drafts/flow-matching/preview.html`。修改后运行 `tools/render_flow_matching_draft.py` 预览，审核后增加 `--publish` 参数准备公开页面，再提交推送。
 
 ## 从 Notion 导入
 
@@ -20,11 +23,11 @@ Diffusion Models 已审核发布。可编辑正文在 `tools/content/diffusion-m
 python tools/import_html.py 'C:\笔记导出\Flow Models.html' --slug flow-models
 ```
 
-把示例路径替换为实际 HTML 文件路径。`--slug` 决定更新哪一篇，当前公开文章分别是 `introduction`、`flow-models`、`diffusion-models`。工具更新该篇正文与资源，并同步首页目录和文章导航。已有标题、章节标签和简介默认保留，可通过 `--title`、`--section`、`--description` 更新。未审核的草稿先在 `drafts/` 中编辑，审核完成后再导入发布。
+把示例路径替换为实际 HTML 文件路径。`--slug` 决定更新哪一篇，当前公开文章分别是 `introduction`、`flow-models`、`diffusion-models`、`flow-matching`。工具更新该篇正文与资源，并同步首页目录和文章导航。已有标题、章节标签和简介默认保留，可通过 `--title`、`--section`、`--description` 更新。未审核的草稿先在 `drafts/` 中编辑，审核完成后再导入发布。
 
 必须提供 `--slug`，避免将整篇笔记覆盖到网站首页。英文短名称只允许小写字母、数字和中间的连字符，例如 `flow-models`。
 
-再次从 Notion 导入时，该篇正文以新导出文件为准；持续维护的正文建议在 Notion 中修改。MIT 三篇笔记缺少参考文献时，工具会根据章节补上官方 PDF 与课程链接；其他文章不自动添加 MIT 文献。
+再次从 Notion 导入时，该篇正文以新导出文件为准；通过渲染脚本维护的文章请修改 `tools/content/` 中的正文。MIT 四篇笔记缺少参考文献时，工具会根据章节补上官方 PDF 与课程链接；其他文章不自动添加 MIT 文献。
 
 ## 新增文章、调整目录
 
