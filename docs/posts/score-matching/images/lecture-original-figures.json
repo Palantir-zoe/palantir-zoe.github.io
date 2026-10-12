@@ -1,0 +1,365 @@
+{
+  "source_pdf_relative_to_workspace": "lecture_notes.pdf",
+  "source_sha256": "d61ddac4329c49043c633c47fadd5293204bce4c9ab28e994a04c79e7251e622",
+  "source_title": "An Introduction to Flow Matching and Diffusion Models",
+  "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf",
+  "authors": [
+    "Peter Holderrieth",
+    "Ezra Erives"
+  ],
+  "source_year": 2026,
+  "source_page_size_points": [
+    612,
+    792
+  ],
+  "dpi": 300,
+  "coordinate_system": "PDF points (1/72 inch), top-left origin, [left, top, right, bottom]",
+  "renderer": "pdftoppm (Poppler)",
+  "renderer_version": "pdftoppm version 24.04.0\nCopyright 2005-2024 The Poppler Developers - http://poppler.freedesktop.org\nCopyright 1996-2011, 2022 Glyph & Cog, LLC",
+  "processing": "Original PDF regions rendered directly; no redrawing, OCR replacement, or resizing",
+  "reproduction_script": "learning-notes/tools/extract_score_matching_figures.py",
+  "figures": [
+    {
+      "filename": "figure-8-score.png",
+      "pdf_page_1_based": 25,
+      "crop_points_top_left_ltrb": [
+        253,
+        188,
+        558,
+        392
+      ],
+      "content": "Figure 8: probability density at left and score vector field at right, with the complete original caption",
+      "reading_notes": [
+        "The arrows are the gradient with respect to x of the log density, not an already chosen generative velocity field.",
+        "The original caption says black rows; these are the black arrows visible in the right panel.",
+        "The figure sits beside body text in the PDF; the crop excludes the left-column prose."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=25",
+      "pixel_crop_ltrb": [
+        1054,
+        783,
+        2325,
+        1634
+      ],
+      "image_size_px": [
+        1271,
+        851
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/figure-8-score.png",
+      "output_sha256": "e0bdd6a282800ad7cde08511251829cd5fa51c9e7b41790770eadaff02158f11"
+    },
+    {
+      "filename": "lecture-proposition-1.png",
+      "pdf_page_1_based": 26,
+      "crop_points_top_left_ltrb": [
+        54,
+        127,
+        558,
+        288
+      ],
+      "content": "Complete Proposition 1: Gaussian probability-path conversion between conditional or marginal score and vector field, Equations 41-42",
+      "box_id": "proposition-1",
+      "reading_notes": [
+        "The displayed coefficients divide by alpha_t, so the expression is evaluated where alpha_t is nonzero.",
+        "Recovering the score from the vector field additionally requires nonzero a_t; endpoint singularities need a limit or separate treatment."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=26",
+      "pixel_crop_ltrb": [
+        225,
+        529,
+        2325,
+        1200
+      ],
+      "image_size_px": [
+        2100,
+        671
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/lecture-proposition-1.png",
+      "output_sha256": "eaab52209dd0c6a845af0471bf776d6d49a218e3ee3bfee9eb71bd0001e69318"
+    },
+    {
+      "filename": "figure-9-sde-paths.png",
+      "pdf_page_1_based": 27,
+      "crop_points_top_left_ltrb": [
+        53,
+        78,
+        561,
+        462
+      ],
+      "content": "Figure 9: complete two-by-three comparison of conditional and marginal probability paths with SDE samples and trajectories, including the original caption",
+      "rows_top_to_bottom": [
+        "conditional probability path",
+        "marginal probability path"
+      ],
+      "columns_left_to_right": [
+        "ground-truth samples",
+        "SDE samples",
+        "SDE trajectories"
+      ],
+      "reading_notes": [
+        "SDE trajectories are irregular even though their time marginals follow the same prescribed probability path as the corresponding ODE.",
+        "The red star marks the fixed conditional target z in the top row; marginal samples in the bottom row cover multiple data modes.",
+        "Matching distributions does not assert that individual stochastic and deterministic trajectories are equal."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=27",
+      "pixel_crop_ltrb": [
+        220,
+        325,
+        2338,
+        1926
+      ],
+      "image_size_px": [
+        2118,
+        1601
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/figure-9-sde-paths.png",
+      "output_sha256": "52ce8c152a72086bb351f464be7872e4b36949b5d02a7095b65af9ddd1140b69"
+    },
+    {
+      "filename": "lecture-theorem-17-p27.png",
+      "pdf_page_1_based": 27,
+      "crop_points_top_left_ltrb": [
+        54,
+        633,
+        558,
+        688
+      ],
+      "content": "Theorem 17, part 1: SDE Extension Trick heading and the opening conditional/marginal vector-field assumptions",
+      "box_id": "theorem-17",
+      "part": 1,
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=27",
+      "pixel_crop_ltrb": [
+        225,
+        2637,
+        2325,
+        2867
+      ],
+      "image_size_px": [
+        2100,
+        230
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/lecture-theorem-17-p27.png",
+      "output_sha256": "73fb0da0832f6d55d4efae97ea9a4fbf40103f822d1ee4280c556dcacdccbff6"
+    },
+    {
+      "filename": "lecture-theorem-17-p28.png",
+      "pdf_page_1_based": 28,
+      "crop_points_top_left_ltrb": [
+        54,
+        79,
+        558,
+        249
+      ],
+      "content": "Theorem 17, part 2: complete continuation with diffusion coefficient, score-corrected SDE, Equations 44-45, endpoint conclusion and Langevin connection",
+      "box_id": "theorem-17",
+      "part": 2,
+      "reading_notes": [
+        "The score correction sigma_t squared over two times the marginal score accompanies the added Brownian noise.",
+        "The statement concerns exact continuous dynamics under the relevant regularity assumptions; learned networks and discretization introduce errors."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=28",
+      "pixel_crop_ltrb": [
+        225,
+        329,
+        2325,
+        1038
+      ],
+      "image_size_px": [
+        2100,
+        709
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/lecture-theorem-17-p28.png",
+      "output_sha256": "ac339f4ba74612bf251d8cf02690656a824dffaa7ffd48ee52b76a1d5c6b02be"
+    },
+    {
+      "filename": "figure-10-langevin.png",
+      "pdf_page_1_based": 30,
+      "crop_points_top_left_ltrb": [
+        53,
+        78,
+        561,
+        401
+      ],
+      "content": "Figure 10: Langevin particle samples and kernel density estimates over four times, including the complete original caption",
+      "time_labels_left_to_right": [
+        0,
+        1.7,
+        3.3,
+        5
+      ],
+      "reading_notes": [
+        "Langevin dynamics preserve the target distribution when initialized from it.",
+        "This figure instead illustrates convergence from a different starting distribution toward the five-mode target.",
+        "The plotted times extend beyond one; this optional fixed-distribution example is not the main noise-to-data time interval."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=30",
+      "pixel_crop_ltrb": [
+        220,
+        325,
+        2338,
+        1671
+      ],
+      "image_size_px": [
+        2118,
+        1346
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/figure-10-langevin.png",
+      "output_sha256": "e6878be9171740dd8eebb87ab67f2cb03ef323bf99f13698b135fd894848e1c8"
+    },
+    {
+      "filename": "lecture-theorem-22.png",
+      "pdf_page_1_based": 31,
+      "crop_points_top_left_ltrb": [
+        54,
+        282,
+        558,
+        435
+      ],
+      "content": "Complete Theorem 22: score matching and conditional/denoising score matching losses differ by a parameter-independent constant and have equal gradients",
+      "box_id": "theorem-22",
+      "reading_notes": [
+        "Equality of expected gradients does not mean the two numerical loss values are identical.",
+        "The final exact recovery sentence presumes an adequately expressive function class and ideal optimization, as in the preceding flow-matching discussion."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=31",
+      "pixel_crop_ltrb": [
+        225,
+        1175,
+        2325,
+        1813
+      ],
+      "image_size_px": [
+        2100,
+        638
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/lecture-theorem-22.png",
+      "output_sha256": "b54bcafa14ab3b1b96168e83de28b1a9398a07ec6b5c1afcca4710920f94b6ca"
+    },
+    {
+      "filename": "algorithm-4-training.png",
+      "pdf_page_1_based": 32,
+      "crop_points_top_left_ltrb": [
+        53,
+        399,
+        561,
+        600
+      ],
+      "content": "Complete Algorithm 4: score matching training for Gaussian probability paths, with Require line, steps 1-8, general-case alternatives and all enclosing rules",
+      "reading_notes": [
+        "Training draws data z, time t, and Gaussian noise epsilon, then constructs x_t = alpha_t z + beta_t epsilon.",
+        "The score label is minus epsilon divided by beta_t; the noise-prediction alternative uses epsilon as the label.",
+        "This is a parameter-update training loop, not an SDE sampling loop.",
+        "The unweighted noise-prediction alternative changes the relative weighting across time compared with the unweighted score loss."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=32",
+      "pixel_crop_ltrb": [
+        220,
+        1662,
+        2338,
+        2500
+      ],
+      "image_size_px": [
+        2118,
+        838
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/algorithm-4-training.png",
+      "output_sha256": "d5f20ca5702d560ee8ce4e91dfeaf21de70ba81cbfb21994ecbb544c40484074"
+    },
+    {
+      "filename": "lecture-summary-24-p32.png",
+      "pdf_page_1_based": 32,
+      "crop_points_top_left_ltrb": [
+        54,
+        620,
+        558,
+        688
+      ],
+      "content": "Summary 24, part 1: complete heading and opening definitions of conditional and marginal scores, continued on page 33",
+      "box_id": "summary-24",
+      "part": 1,
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=32",
+      "pixel_crop_ltrb": [
+        225,
+        2583,
+        2325,
+        2867
+      ],
+      "image_size_px": [
+        2100,
+        284
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/lecture-summary-24-p32.png",
+      "output_sha256": "02c9f5399b725a778a6d83680e9dd93c81b63516ea89709591a6f9e7c907f888"
+    },
+    {
+      "filename": "lecture-summary-24-p33.png",
+      "pdf_page_1_based": 33,
+      "crop_points_top_left_ltrb": [
+        54,
+        79,
+        558,
+        450
+      ],
+      "content": "Summary 24, part 2: complete continuation, score-corrected SDE, score matching objective, Gaussian conversion, and sampling formulas, Equations 52-56",
+      "box_id": "summary-24",
+      "part": 2,
+      "reading_notes": [
+        "The velocity-only SDE form divides by a_t; the score-only form avoids that division.",
+        "The final text explicitly describes the trained-model samples as approximate."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=33",
+      "pixel_crop_ltrb": [
+        225,
+        329,
+        2325,
+        1876
+      ],
+      "image_size_px": [
+        2100,
+        1547
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/lecture-summary-24-p33.png",
+      "output_sha256": "547eacc6416ae37650cbefa0a6a22a1c64b74d453ce0bf1c60302c0e97bfc2de"
+    }
+  ]
+}

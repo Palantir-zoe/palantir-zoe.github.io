@@ -5,11 +5,13 @@
 - 仓库：<https://github.com/Palantir-zoe/palantir-zoe.github.io>
 - 公开网址：<https://palantir-zoe.github.io/>
 
-当前公开文章分别位于 `docs/posts/introduction/`、`docs/posts/flow-models/`、`docs/posts/diffusion-models/`、`docs/posts/flow-matching/`，各目录内的 `index.html` 是对应正文。
+当前公开文章分别位于 `docs/posts/introduction/`、`docs/posts/flow-models/`、`docs/posts/diffusion-models/`、`docs/posts/flow-matching/`、`docs/posts/score-matching/`，各目录内的 `index.html` 是对应正文。
 
 Diffusion Models 已完成审核并发布，包含原文 Figure 3 和 Summary 7。可编辑正文在 `tools/content/diffusion-models.html`，本地预览与原图保存在 `drafts/diffusion-models/`；后续编辑、预览与发布步骤见 [维护说明](drafts/diffusion-models/README.md)。
 
 Flow Matching 已完成审核并发布，覆盖第 3 章的 3.1–3.3 节，包含原文 Figure 4–7、Algorithm 3、关键定理和英文总结。可编辑正文在 `tools/content/flow-matching.html`；后续编辑、预览与发布步骤见 [维护说明](drafts/flow-matching/README.md)。
+
+Score Functions and Score Matching 已完成审核并发布，覆盖第 4 章的 4.1–4.3 节，包含原文 Figure 8–10、Algorithm 4、关键定理和完整 Summary 24。可编辑正文在 `tools/content/score-matching.html`；后续编辑、预览与发布步骤见 [维护说明](drafts/score-matching/README.md)。
 
 ## 更新内容
 
@@ -35,7 +37,7 @@ python tools/import_html.py 'C:\笔记导出\新笔记.html' --slug probability-
 python tools/blog.py
 ```
 
-首页由 `tools/home-template.html` 生成，不要在 `docs/index.html` 中手写正文。再次导入某篇文章时，该篇正文会以新导出文件为准。MIT 四篇笔记会自动补充对应章节的参考文献；其他文章请在正文中维护自己的参考文献。
+首页由 `tools/home-template.html` 生成，不要在 `docs/index.html` 中手写正文。再次导入某篇文章时，该篇正文会以新导出文件为准。MIT 五篇笔记会自动补充对应章节的参考文献；其他文章请在正文中维护自己的参考文献。
 
 ## 本地预览
 

@@ -1,0 +1,360 @@
+<p>上一节的 Flow Matching 直接学习把噪声分布推向数据分布的速度。这一节学习另一个量：<strong>当前位置附近的对数密度怎样变化</strong>，也就是 <em>score</em>，再用它构造生成的运动规则。</p>
+<p class="note-focus"><strong>Flow Matching 与 Score Matching 是两种可选择的训练思路。</strong>对本章使用的同一高斯概率路径，可以直接学速度，也可以学 score 后换算成速度；两者不需要先后训练。</p>
+<h3 id="fm-sm-relationship">先把两节接起来：同一概率路径，不同预测目标</h3>
+<p>仍然从数据中抽取 \(z\)，独立抽取高斯噪声 \(\epsilon\)，选一个时刻 \(t\)，合成网络的输入：</p>
+<p>\[ x_t=\alpha_tz+\beta_t\epsilon,\qquad \epsilon\sim\mathcal N(0,I_d). \]</p>
+<p><strong>这里的 \(\beta_t\) 就是噪声前面的系数。</strong>回想线性例子 \(x_t=tz+(1-t)\epsilon\)：其中 \(\alpha_t=t,\ \beta_t=1-t\)。写成 \(\alpha_t,\beta_t\)，是为了也能讨论其他时间系数；线性例子始终是这条一般公式的一种具体选择。</p>
+<p>\(\alpha_t,\beta_t\) 是预先选择的时间系数，满足 \(\alpha_0=0,\beta_0=1,\alpha_1=1,\beta_1=0\)：\(t=0\) 对应噪声，\(t=1\) 对应数据。固定 \(z\) 看这些带噪样本，得到条件分布；把所有数据来源混在一起，得到整体分布 \(p_t\)。两种训练都可以使用这样的输入，区别在于让网络回答什么：</p>
+<table><thead><tr><th>训练思路</th><th>网络接收</th><th>希望学到的量</th></tr></thead><tbody>
+<tr><td>Flow Matching</td><td>\((x_t,t)\)</td><td>实现这条分布路径的速度 \(u_t^{\mathrm{target}}(x_t)\)</td></tr>
+<tr><td>Score Matching</td><td>\((x_t,t)\)</td><td>当前整体分布的 score \(s_t(x_t)\)</td></tr>
+</tbody></table>
+<p>两种训练都通过容易计算的条件标签，学习所需的整体量。还要区分训练方法与采样方式：<strong>Score Matching 学到的 score，既可以用于构造 ODE，也可以用于构造 SDE。</strong></p>
+<p>下面按 4.1–4.3 节依次回答：<strong>score 是什么 → 怎样用它生成 → 怎样训练得到它。</strong>前两节先讨论理想目标，4.3 节再用网络逼近。公式编号沿用原文，较长推导按需展开。</p>
+
+<h2 id="score-functions">4.1 Conditional and Marginal Score Functions：条件与边缘 Score</h2>
+
+<h3>Score 是什么：对数密度对位置的梯度</h3>
+<p>对一个可微且在当前位置为正的概率密度 \(q(x)\)，定义：</p>
+<p>\[ \boxed{s(x)=\nabla_x\log q(x)=\frac{\nabla_x q(x)}{q(x)}.} \]</p>
+<p>\(\nabla_x\) 表示<strong>对样本位置 \(x\) 求梯度</strong>，不是对网络参数求导。在一维中它是一个导数；在多维中，它把每个坐标方向的偏导数组成一个向量。</p>
+<p>这个向量指向当前位置附近<strong>对数密度增长最快的方向</strong>。它描述局部变化，不是给样本打出的一个分数，也不直接等于样本运动的速度。</p>
+<p>在一维中可以先这样读：\(s(x)&gt;0\)，说明在这个位置稍微向右，密度会上升；\(s(x)&lt;0\)，说明稍微向左，密度会上升。\(s(x)=0\) 只表示一阶变化为零，不保证这里一定是密度峰。多维的梯度把这种局部方向信息合在一个向量里。</p>
+<figure class="lecture-figure" id="figure-8">
+<a href="images/figure-8-score.png" target="_blank" rel="noopener noreferrer"><img src="images/figure-8-score.png" alt="Figure 8 原图：左侧是概率密度，右侧的黑色箭头表示不同位置的 score 向量。" loading="lazy"></a>
+<figcaption>Figure 8，原文第 <a href="https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=25" target="_blank" rel="noopener noreferrer">25 页</a>。Peter Holderrieth &amp; Ezra Erives，MIT 6.S184（2026）。点击图片可放大。</figcaption>
+</figure>
+<p>左图给出密度的形状，右图把各位置的局部上升方向画成箭头。<strong>只沿这些箭头做梯度上升，不等于从这个分布采样。</strong>梯度上升容易把点推向密度峰；生成需要让整群样本形成正确的分布，后面还要说明 score 怎样参与动力学。</p>
+
+<h3>条件 Score 与边缘 Score：仍然是后验加权平均</h3>
+<p>回到已经选好的概率路径，分别定义：</p>
+<p>\[ s_t(x\mid z):=\nabla_x\log p_t(x\mid z),\qquad s_t(x):=\nabla_x\log p_t(x). \]</p>
+<p>这里的 \(z\) 是干净数据，\(x\) 是时刻 \(t\) 的带噪位置。<strong>条件 score 假定我们知道来源 \(z\)；边缘 score 只看当前位置与时间，不知道它来自哪条数据。</strong>例如，训练时先抽到一张图片再给它加噪，我们知道原图；生成时只有当前的带噪状态，没有一张已知原图可供查询。</p>
+<p>把每个数据点对应的条件密度，按数据分布混合起来，就得到当前时刻的整体密度：</p>
+<p>\[ p_t(x)=\int p_t(x\mid z)p_{\mathrm{data}}(z)\,\mathrm dz. \]</p>
+<p>但对数密度的梯度不能直接按原来的数据比例平均。给定当前位置 \(x\) 后，还要考虑：<strong>哪个来源更可能产生这里的状态？</strong>结果是：</p>
+<p>\[ \boxed{s_t(x)=\int s_t(x\mid z)\,\underbrace{\frac{p_t(x\mid z)p_{\mathrm{data}}(z)}{p_t(x)}}_{q_t(z\mid x)}\,\mathrm dz.} \tag{38} \]</p>
+<p>这里 \(q_t(z\mid x)\) 是给定当前状态后的来源分布：<strong>更可能产生这个状态的来源，其条件 score 权重更大。</strong>这与 Flow Matching 的边缘化公式是同一种结构——把“条件速度”换成“条件 score”，仍然按当前状态下的来源概率平均。</p>
+<p>先记住这个结论的用途：<strong>如果回归条件 score 标签能学到它们的条件均值，那么学到的就恰好是边缘 score。</strong>4.3 节将用它说明训练为什么成立；训练本身不需要显式算出这些后验权重。</p>
+<details class="note-detail" id="detail-score-marginalization"><summary>展开：对混合密度求导，为什么得到后验权重？</summary>
+<p>这一步是在改写 score 的表达式，没有求解新的微分方程。先<strong>固定时刻 \(t\)，对位置 \(x\) 求导</strong>；\(z\) 是积分时遍历的数据来源。下面在相应密度为正、微分与积分可交换的条件下计算。</p>
+<p><strong>第一步：先处理最外层的对数。</strong>一维链式法则是 \((\log f(x))'=f'(x)/f(x)\)，对每个坐标应用它，就得到：</p>
+<p>\[ s_t(x)=\nabla_x\log p_t(x)=\frac{1}{p_t(x)}\nabla_xp_t(x). \]</p>
+<p>此时要计算的是右边的 \(\nabla_xp_t(x)\)。我们没有把“混合密度的对数”拆成“各条件密度对数的平均”；对数一般不能这样穿过积分。</p>
+<p><strong>第二步：把混合密度代入被求导的那一项。</strong></p>
+<p>\[ \begin{aligned}
+\nabla_xp_t(x)
+&amp;=\nabla_x\int p_t(x\mid z)p_{\mathrm{data}}(z)\,\mathrm dz\\
+&amp;=\int \nabla_xp_t(x\mid z)\,p_{\mathrm{data}}(z)\,\mathrm dz.
+\end{aligned} \]</p>
+<p>第二行把对 \(x\) 的求导移进了对 \(z\) 的积分。\(p_{\mathrm{data}}(z)\) 只依赖来源 \(z\)，对 \(x\) 求导时是常数，因此导数只作用在 \(p_t(x\mid z)\) 上。</p>
+<p>把这个结果放回第一步：</p>
+<p>\[ s_t(x)=\frac{1}{p_t(x)}\int\nabla_xp_t(x\mid z)\,p_{\mathrm{data}}(z)\,\mathrm dz. \]</p>
+<p><strong>第三步：把积分里的式子整理成两个熟悉的因子。</strong>对 \(z\) 积分时，\(p_t(x)\) 不随 \(z\) 变化，因此可以把外面的 \(1/p_t(x)\) 放进积分：</p>
+<p>\[ s_t(x)=\int\frac{\nabla_xp_t(x\mid z)\,p_{\mathrm{data}}(z)}{p_t(x)}\,\mathrm dz. \]</p>
+<p>接着，<strong>同乘、同除一个 \(p_t(x\mid z)\)</strong>，数值没有改变：</p>
+<p>\[ \frac{\nabla_xp_t(x\mid z)\,p_{\mathrm{data}}(z)}{p_t(x)}
+=\frac{\nabla_xp_t(x\mid z)}{p_t(x\mid z)}\cdot\frac{p_t(x\mid z)p_{\mathrm{data}}(z)}{p_t(x)}. \]</p>
+<p>可以反过来检查：右边的 \(p_t(x\mid z)\) 约掉后，就回到左边。这样整理的目的，是让第一个因子变成条件 score：</p>
+<p>\[ \frac{\nabla_xp_t(x\mid z)}{p_t(x\mid z)}=\nabla_x\log p_t(x\mid z)=s_t(x\mid z). \]</p>
+<p><strong>第四步：认出第二个因子是 Bayes 后验。</strong>先抽 \(Z\sim p_{\mathrm{data}}\)，再抽 \(X_t\sim p_t(\cdot\mid Z)\)，两者的联合密度是 \(p_t(x\mid z)p_{\mathrm{data}}(z)\)。已知 \(X_t=x\) 后，用联合密度除以 \(x\) 的边缘密度：</p>
+<p>\[ q_t(z\mid x)=\frac{p_t(x\mid z)p_{\mathrm{data}}(z)}{p_t(x)}. \]</p>
+<p>这就是“已经出现在这里的样本，可能来自哪个 \(z\)”的条件密度。分母把所有来源的贡献归一化：</p>
+<p>\[ \int q_t(z\mid x)\,\mathrm dz=\frac{\int p_t(x\mid z)p_{\mathrm{data}}(z)\,\mathrm dz}{p_t(x)}=1. \]</p>
+<p><strong>第五步：把两个因子分别换成它们的记号。</strong></p>
+<p>\[ \boxed{s_t(x)=\int s_t(x\mid z)q_t(z\mid x)\,\mathrm dz.} \tag{39} \]</p>
+<p>也就是 \(s_t(x)=\mathbb E[s_t(x\mid Z)\mid X_t=x]\)：固定当前的 \((x,t)\)，对仍然可能的来源做后验平均。<strong>后验权重是对混合密度求导后自然整理出来的，不是额外规定的平均方式。</strong>虽然它也依赖 \(x\)，但这里的求导已在第二步完成，后面只是代数改写，不需要再对后验求一次导数。</p>
+</details>
+
+<h3>Example 15：高斯条件路径的 Score 怎样算？</h3>
+<p>继续使用高斯条件路径 \(p_t(\cdot\mid z)=\mathcal N(\alpha_tz,\beta_t^2I_d)\)。它可以通过 \(x=\alpha_tz+\beta_t\epsilon\)、\(\epsilon\sim\mathcal N(0,I_d)\) 直接采样；固定 \(t,z\) 后，中心是 \(\alpha_tz\)，每个方向的标准差是 \(\beta_t\)。</p>
+<p>对高斯密度取对数，再对位置求导，结果很简单：</p>
+<p>\[ \boxed{s_t(x\mid z)=-\frac{x-\alpha_tz}{\beta_t^2}.} \tag{40} \]</p>
+<p>分子是当前位置偏离高斯中心的距离；负号让箭头指回<strong>当前中心 \(\alpha_tz\)</strong>，分母用方差 \(\beta_t^2\) 调整尺度。它描述当前位置的密度变化，并不是“直接走向最终数据点 \(z\)”的速度。这里要求 \(\beta_t&gt;0\)，收缩到点的终点需按极限理解。</p>
+<details class="note-detail" id="detail-gaussian-score"><summary>展开计算：高斯密度取对数，再对位置求导</summary>
+<p>先写出密度，再取对数。乘在指数前的系数变成一项常数，指数里的平方距离则保留下来：</p>
+<p>\[ p_t(x\mid z)=\frac{1}{(2\pi\beta_t^2)^{d/2}}\exp\!\left(-\frac{\|x-\alpha_tz\|^2}{2\beta_t^2}\right). \]</p>
+<p>\[ \log p_t(x\mid z)=\underbrace{-\frac d2\log(2\pi\beta_t^2)}_{C_t}-\frac{\|x-\alpha_tz\|^2}{2\beta_t^2}. \]</p>
+<p>对 \(x\) 求导时，\(t,z,\alpha_t,\beta_t\) 都固定。\(C_t\) 不含 \(x\)，导数为零。在一维中，平方项的求导就是 \(\frac{\mathrm d}{\mathrm dx}(x-\alpha_tz)^2=2(x-\alpha_tz)\)；多维时逐坐标计算，得到同样形式的向量。因此：</p>
+<p>\[ \nabla_x\log p_t(x\mid z)=0-\frac{1}{2\beta_t^2}\cdot2(x-\alpha_tz). \]</p>
+<p>约去系数中的 2，就得到式 (40)。</p>
+</details>
+<p><strong>用一个小例子接回上一节。</strong>取线性路径 \(\alpha_t=t,\beta_t=1-t\)，本次抽到 \(z=3,\epsilon=-1,t=0.5\)，则：</p>
+<p>\[ x_t=0.5\times3+0.5\times(-1)=1. \]</p>
+<p>Flow Matching 的条件速度标签为 \(z-\epsilon=4\)；这个状态的条件 score 则为：</p>
+<p>\[ s_{0.5}(1\mid3)=-\frac{1-0.5\times3}{0.5^2}=2. \]</p>
+<p><strong>同一个输入 \((1,0.5)\)，速度标签是 4，score 标签是 2，因为预测的量不同。</strong>这些是本次抽样的条件标签；只给定输入而不知道来源时，边缘目标还要对可能的来源取条件均值，不能直接认定为这两个数。</p>
+
+<h3>Proposition 1：高斯路径下，Score 与目标速度可以转换</h3>
+<p>既然 score 不等于速度，为什么学 score 还能生成？关键是：<strong>对这里选定的高斯路径，score 可以通过一个已知公式换算成上一节需要的目标速度。</strong></p>
+<figure class="lecture-figure lecture-box" id="lecture-proposition-1">
+<a href="images/lecture-proposition-1.png" target="_blank" rel="noopener noreferrer"><img src="images/lecture-proposition-1.png" alt="Proposition 1 英文原版：高斯概率路径的条件与边缘速度，均可以写成 score 与当前位置的线性组合。" loading="lazy"></a>
+<figcaption>Proposition 1，原文第 <a href="https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=26" target="_blank" rel="noopener noreferrer">26 页</a>。点击图片可放大。</figcaption>
+</figure>
+<p>用我们刚定义的 \(s_t\) 记号，边缘速度的关系是：</p>
+<p>\[ \boxed{u_t^{\mathrm{target}}(x)=a_t s_t(x)+b_t x,}\qquad a_t=\beta_t^2\frac{\dot\alpha_t}{\alpha_t}-\dot\beta_t\beta_t,\quad b_t=\frac{\dot\alpha_t}{\alpha_t}. \tag{42} \]</p>
+<p>\(a_t,b_t\) 由选定的 \(\alpha_t,\beta_t\) 算出，不是额外学习的参数。<strong>score 告诉我们局部密度的变化；乘上系数、再加上 \(b_tx\)，才得到实现该概率路径的目标速度。</strong>这也说明为何不能把 score 本身直接当成生成速度。</p>
+<p>在线性路径 \(\alpha_t=t,\beta_t=1-t\) 下，\(\dot\alpha_t=1,\dot\beta_t=-1\)，系数化为 \(a_t=(1-t)/t,\ b_t=1/t\)，所以：</p>
+<p>\[ \boxed{u_t^{\mathrm{target}}(x)=\frac{1-t}{t}s_t(x)+\frac{x}{t},\qquad 0&lt;t&lt;1.} \]</p>
+<p>条件速度与条件 score 也满足同样的转换。继续上面的例子，\(t=0.5,x=1\) 时，这条关系变成“速度 = score + 2”：代入条件 score 标签 2，得到条件速度标签 4，正好接回 \(z-\epsilon\)。</p>
+<details class="note-detail" id="detail-score-velocity"><summary>展开：从条件公式得到速度与 Score 的转换</summary>
+<p><strong>第一步：用 score 表示原公式里的 \(z\)。</strong>由式 (40) 移项，在 \(\alpha_t\ne0\)、\(\beta_t&gt;0\) 时：</p>
+<p>\[ \begin{aligned}
+\beta_t^2s_t(x\mid z)&amp;=\alpha_tz-x,\\
+\alpha_tz&amp;=x+\beta_t^2s_t(x\mid z),\\
+z&amp;=\frac{x+\beta_t^2s_t(x\mid z)}{\alpha_t}.
+\end{aligned} \]</p>
+<p><strong>第二步：代入上一节的条件速度公式。</strong>这里点号表示时间导数，即 \(\dot\alpha_t=\mathrm d\alpha_t/\mathrm dt\)、\(\dot\beta_t=\mathrm d\beta_t/\mathrm dt\)。</p>
+<p>\[ u_t^{\mathrm{target}}(x\mid z)=\left(\dot\alpha_t-\alpha_t\frac{\dot\beta_t}{\beta_t}\right)z+\frac{\dot\beta_t}{\beta_t}x. \]</p>
+<p>把第一步得到的整个分式替换 \(z\)，并把分母 \(\alpha_t\) 除进前面的系数：</p>
+<p>\[ \begin{aligned}
+u_t^{\mathrm{target}}(x\mid z)
+&amp;=\left(\dot\alpha_t-\alpha_t\frac{\dot\beta_t}{\beta_t}\right)\frac{x+\beta_t^2s_t(x\mid z)}{\alpha_t}+\frac{\dot\beta_t}{\beta_t}x\\
+&amp;=\left(\frac{\dot\alpha_t}{\alpha_t}-\frac{\dot\beta_t}{\beta_t}\right)\bigl[x+\beta_t^2s_t(x\mid z)\bigr]+\frac{\dot\beta_t}{\beta_t}x.
+\end{aligned} \]</p>
+<p><strong>第三步：展开括号，把含 \(x\) 和含 score 的项分别合并。</strong>\(x\) 前的系数为：</p>
+<p>\[ \left(\frac{\dot\alpha_t}{\alpha_t}-\frac{\dot\beta_t}{\beta_t}\right)+\frac{\dot\beta_t}{\beta_t}=\frac{\dot\alpha_t}{\alpha_t}=b_t. \]</p>
+<p>score 前的系数为：</p>
+<p>\[ \beta_t^2\left(\frac{\dot\alpha_t}{\alpha_t}-\frac{\dot\beta_t}{\beta_t}\right)=\beta_t^2\frac{\dot\alpha_t}{\alpha_t}-\beta_t\dot\beta_t=a_t. \]</p>
+<p>于是，条件关系变成：</p>
+<p>\[ u_t^{\mathrm{target}}(x\mid z)=a_ts_t(x\mid z)+b_tx. \tag{41} \]</p>
+<p><strong>第四步：从条件量变成边缘量。</strong>固定 \((x,t)\)，对来源 \(z\) 按同一个后验 \(q_t(z\mid x)\) 平均。左边根据上一节的边缘化定理变成目标边缘速度；右边的 \(a_t,b_t,x\) 不随 \(z\) 变化，可以移到积分外：</p>
+<p>\[ \begin{aligned}
+u_t^{\mathrm{target}}(x)
+&amp;=a_t\underbrace{\int s_t(x\mid z)q_t(z\mid x)\,\mathrm dz}_{s_t(x)}+b_tx\underbrace{\int q_t(z\mid x)\,\mathrm dz}_{1}\\
+&amp;=a_ts_t(x)+b_tx.
+\end{aligned} \]</p>
+<p>因此，式 (42) 同时用到了两个已知结果：条件速度可以按后验平均，条件 score 也可以按这个后验平均。</p>
+<p>反过来，在 \(a_t\ne0\) 时，\(s_t(x)=(u_t^{\mathrm{target}}(x)-b_tx)/a_t\)。这些含分母的表达式要求相应分母非零；例如 \(\alpha_0=0\)，不能直接把起点代入含 \(1/\alpha_t\) 的公式，端点需要依据极限或采用稳定的参数化处理。</p>
+</details>
+<p class="note-focus"><strong>这就是本节与 Flow Matching 的连接：</strong>上一节直接训练速度网络；这一节可以训练 score 网络，再计算 \(u_t^\theta(x)=a_ts_t^\theta(x)+b_tx\)，把它交给 ODE 求解器。能够换算预测目标，不表示两种原始损失完全相同：误差经系数缩放后，时间权重也可能改变。</p>
+
+<h3 id="denoiser">Remark 16：预测干净数据，也能换算成 Score</h3>
+<p>前面让网络预测 score。现在沿用同一份训练数据，换一个更直观的问题：<strong>给你带噪状态 \(x_t=\alpha_tz+\beta_t\epsilon\) 和时刻 \(t\)，请估计原来的干净数据 \(z\)。</strong>做这个预测的网络 \(D_t^\theta(x)\)，就叫 Denoiser（去噪器）。</p>
+<p><strong>输入仍是 \((x_t,t)\)，训练标签改为干净数据 \(z\)。</strong>例如，给一张图片加噪后，把带噪图片交给网络，用原图计算平方误差 \(\|D_t^\theta(x_t)-z\|^2\)。原图只用于训练时计算误差，网络输入里没有它。选择这种输出方式时，训练这个去噪网络即可，score 随后用公式算出。</p>
+<p>为什么下面出现“条件均值”？同一个带噪状态可能来自不同的原图，网络仅凭 \(x,t\) 通常不能唯一找回本次的来源。平方误差下，理想预测会对这些可能的干净数据，按它们在当前状态下的可能性取平均：</p>
+<p>\[ D_t(x):=\mathbb E[Z\mid X_t=x]. \]</p>
+<p>\(D_t\) 表示这个理想的估计函数，\(D_t^\theta\) 是训练后对它的近似。它们估计的是<strong>干净数据</strong>；输出与数据同维度，可能是多个候选的平均，不保证恰好等于某一个真实原图。</p>
+<p><strong>它为什么能换算成 score？</strong>已知原始数据 \(z\) 时，条件 score 是 \((\alpha_tz-x)/\beta_t^2\)。不知道来源时，要对可能的 \(z\) 做后验平均。固定当前的 \(x,t\) 后，\(\alpha_t,\beta_t,x\) 都不变，只有 \(z\) 这一项需要平均；因此，把它换成平均值 \(D_t(x)\) 就得到：</p>
+<p>\[ \boxed{s_t(x)=\frac{\alpha_tD_t(x)-x}{\beta_t^2}.} \]</p>
+<p>在实际网络中，用 \(D_t^\theta(x)\) 代替 \(D_t(x)\)，就得到 score 估计。例如仍取 \(\alpha_t=t,\beta_t=1-t\)，在 \(t=0.5,x=1\) 时，<strong>假设网络预测的干净数据是 2.6</strong>，那么换算结果为：</p>
+<p>\[ \widehat s_{0.5}^\theta(1)=\frac{0.5\times2.6-1}{0.5^2}=1.2. \]</p>
+<p>这里的 2.6 是为了演示换算而假设的网络输出；1.2 也只是相应的 score 估计。<strong>预测干净数据之后，就能通过已知公式得到 score，再构造生成用的速度或漂移。</strong>采样仍然逐步推进，不能直接把干净数据估计当作下一时刻的位置。</p>
+<details class="note-detail" id="detail-denoiser-score"><summary>展开：Denoiser 的训练目标，以及均值怎样代入 Score</summary>
+<p>上述“预测原图”的训练，可以写成普通的平方误差回归：</p>
+<p>\[ \mathcal L_D(\theta)=\mathbb E_{t,z,\epsilon}\!\left[\|D_t^\theta(\alpha_tz+\beta_t\epsilon)-z\|^2\right]. \]</p>
+<p>在均方回归的理想条件下，给定输入后的最优预测就是 \(\mathbb E[Z\mid X_t=x]\)。这与前面“条件标签回归学到条件均值”的逻辑相同。换算输出后，损失的时间权重可能不同，这里不把该损失与原始 CSM 损失说成完全相同。</p>
+<p>现在固定 \(x,t\)，只对可能的来源 \(Z\) 平均。先代入条件 score，再把不随 \(Z\) 变化的量提出：</p>
+<p>\[ \begin{aligned}
+s_t(x)&amp;=\mathbb E[s_t(x\mid Z)\mid X_t=x]\\
+&amp;=\mathbb E\!\left[\frac{\alpha_tZ-x}{\beta_t^2}\,\middle|\,X_t=x\right]\\
+&amp;=\frac{\alpha_t\mathbb E[Z\mid X_t=x]-x}{\beta_t^2}\\
+&amp;=\frac{\alpha_tD_t(x)-x}{\beta_t^2}.
+\end{aligned} \]</p>
+<p>这里被平均的是来源 \(Z\)，当前位置 \(x\) 不动，\(\alpha_t,\beta_t\) 也固定，所以它们可以从期望中提出。最后一行只是把 \(\mathbb E[Z\mid X_t=x]\) 换成定义好的 \(D_t(x)\)。</p>
+<p>再移项，就有 \(D_t(x)=(x+\beta_t^2s_t(x))/\alpha_t\)。前面的 score 公式要求 \(\beta_t&gt;0\)；这个反向换算还要求 \(\alpha_t\ne0\)，端点需单独处理。</p>
+</details>
+
+<h2 id="sde-sampling">4.2 Sampling with SDEs：用 Score 构造随机采样</h2>
+<p><strong>先假设已经知道正确的 score。</strong>由 \(u_t^{\mathrm{target}}=a_ts_t+b_tx\)，我们已经能算出 ODE 速度，从噪声出发生成样本。这里进一步问：能不能让轨迹带有随机波动，同时仍保持原来 ODE 规定的分布路径？</p>
+<h3>从 ODE 到 SDE：加随机扰动，也要调整漂移</h3>
+<p>用 \(v_t\) 表示要构造的 SDE 总漂移，\(\sigma_t\) 表示运动过程中布朗噪声的强度系数。对比两种运动规则：</p>
+<p>\[ \begin{aligned}
+\text{已有的 ODE：}\quad &amp;\mathrm dX_t=u_t^{\mathrm{target}}(X_t)\,\mathrm dt,\\
+\text{要构造的 SDE：}\quad &amp;\mathrm dX_t=v_t(X_t)\,\mathrm dt+\sigma_t\,\mathrm dW_t.
+\end{aligned} \]</p>
+<p>这正是前篇 <em>Diffusion Models</em> 的形式 \(\mathrm dX_t=u_t^\theta(X_t)\mathrm dt+\sigma_t\mathrm dW_t\)：<strong>前篇的 \(u_t^\theta\) 表示整个 SDE 漂移，在这里对应 \(v_t^\theta\)；它不能直接与 ODE 目标速度画等号。</strong>前篇给出模型形式，本节补上怎样构造这个漂移。</p>
+
+<h3 id="noise-scales">先分清 \(\beta_t\) 与 \(\sigma_t\)：分布宽度和新增噪声</h3>
+<p>\(\beta_t\) 来自构造带噪状态的式子，线性例子中就是 \(1-t\)：</p>
+<p>\[ \begin{aligned}
+x_t&amp;=\alpha_tz+\beta_t\epsilon,\\
+\alpha_t&amp;=t,\quad \beta_t=1-t\quad\text{（线性例子）}.
+\end{aligned} \]</p>
+<p><strong>\(\beta_t\) 回答的是：固定同一个干净数据 \(z\)，时刻 \(t\) 的带噪样本散得多开？</strong>因为 \(\epsilon\) 的各坐标标准差为 1，乘上非负系数 \(\beta_t\) 后，标准差就是 \(\beta_t\)，方差是 \(\beta_t^2\)。所以条件分布写成 \(\mathcal N(\alpha_tz,\beta_t^2I_d)\)；这里说的是给定来源 \(z\) 后的分布宽度。</p>
+<p><strong>\(\sigma_t\) 回答的是：沿 SDE 往前走一小步时，新加入多大的随机位移？</strong>步长为 \(h\) 时，这部分位移近似为：</p>
+<p>\[ \underbrace{\sigma_t\sqrt h\,\xi}_{\text{这一步新增的随机位移}},\qquad \xi\sim\mathcal N(0,I_d). \]</p>
+<p>每一步新增位移的标准差是 \(\sigma_t\sqrt h\)。因此，\(\beta_t\) 描述<strong>希望形成的条件分布</strong>，\(\sigma_t\) 控制<strong>运动中注入的新噪声</strong>，两者不能互换。</p>
+<p>直接在原 ODE 上加噪声，通常会让分布额外扩散。我们想保留的是相同时刻“整群点的密度图”，因此需要同步修正漂移；score 恰好提供这项修正。</p>
+
+<h3>Theorem 17：加噪声时，为什么还要加一项 Score？</h3>
+<figure class="lecture-figure lecture-box" id="lecture-theorem-17">
+<a href="images/lecture-theorem-17-p27.png" target="_blank" rel="noopener noreferrer"><img src="images/lecture-theorem-17-p27.png" alt="Theorem 17 英文原版，第 27 页：SDE extension trick 的假设与开头。" loading="lazy"></a>
+<a href="images/lecture-theorem-17-p28.png" target="_blank" rel="noopener noreferrer"><img src="images/lecture-theorem-17-p28.png" alt="Theorem 17 英文原版续页，第 28 页：加入 score 漂移修正与布朗噪声后，仍保持原来的边缘概率路径。" loading="lazy"></a>
+<figcaption>Theorem 17，原文第 <a href="https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=27" target="_blank" rel="noopener noreferrer">27 页</a>、<a href="https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=28" target="_blank" rel="noopener noreferrer">28 页</a>。保留完整跨页内容，点击图片可放大。</figcaption>
+</figure>
+<p>答案是把总漂移选为 \(v_t=u_t^{\mathrm{target}}+\frac{\sigma_t^2}{2}s_t\)。从 \(X_0\sim p_{\mathrm{init}}\) 出发，得到：</p>
+<p>\[ \boxed{\mathrm dX_t=\left[u_t^{\mathrm{target}}(X_t)+\frac{\sigma_t^2}{2}s_t(X_t)\right]\mathrm dt+\sigma_t\,\mathrm dW_t.} \tag{44} \]</p>
+<ul>
+<li>\(u_t^{\mathrm{target}}\)：原来推动分布从噪声走向数据的速度。</li>
+<li>\(\sigma_t\,\mathrm dW_t\)：新加入的随机扰动。</li>
+<li>\(\frac{\sigma_t^2}{2}s_t\)：与噪声配套的漂移修正，用来保持原来的分布演化。</li>
+</ul>
+<p class="note-focus"><strong>中括号里的两项合起来，才对应前篇 SDE 的整个漂移。</strong>这里从实现指定 \(p_t\) 的 ODE 速度出发，配上同一 \(p_t\) 的 score；对任意网络随意加一项 score，并没有这样的保证。</p>
+<p>在相应正则性与唯一性条件下，这个 SDE 仍满足 \(X_t\sim p_t\)。<strong>保持相同的是每个时刻的边缘分布，单条轨迹可以完全不同。</strong>当 \(\sigma_t=0\) 时，就回到原来的 ODE。</p>
+<figure class="lecture-figure" id="figure-9">
+<a href="images/figure-9-sde-paths.png" target="_blank" rel="noopener noreferrer"><img src="images/figure-9-sde-paths.png" alt="Figure 9 原图：条件与边缘概率路径的 SDE 采样。轨迹包含随机波动，但各时刻的样本分布仍与目标路径对应。" loading="lazy"></a>
+<figcaption>Figure 9，原文第 <a href="https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=27" target="_blank" rel="noopener noreferrer">27 页</a>，含原图注。点击图片可放大。</figcaption>
+</figure>
+<p>上排固定一个数据终点，下排覆盖整个数据分布。和上一节的 ODE 对比，轨迹出现了随机波动；要比较的仍是同一时刻整群样本的分布，而不是要求每个样本沿原来的路线走。</p>
+<p>采样用的 \(\sigma_t\) 可以在 score 网络训练完成后选择。<strong>更换 \(\sigma_t\) 时，也要同步重算配套的漂移修正。</strong>固定整个漂移、只改噪声，一般会改变分布；可以复用的是学到的 score。</p>
+
+<h3>Example 18：高斯路径下，可以只用 Score 表达漂移</h3>
+<p>式 (44) 同时写了目标速度和 score，看起来像是需要学两个函数。但对这里的高斯路径，4.1 节已经给出 \(u_t^{\mathrm{target}}=a_ts_t+b_tx\)。把它代入漂移中的第一项：</p>
+<p>\[ \begin{aligned}
+u_t^{\mathrm{target}}(x)+\frac{\sigma_t^2}{2}s_t(x)
+&amp;=a_ts_t(x)+b_tx+\frac{\sigma_t^2}{2}s_t(x)\\
+&amp;=\left(a_t+\frac{\sigma_t^2}{2}\right)s_t(x)+b_tx.
+\end{aligned} \]</p>
+<p>两个乘着 score 的系数相加，再把 \(x\) 换成轨迹当前位置 \(X_t\)，就得到：</p>
+<p>\[ \mathrm dX_t=\left[\left(a_t+\frac{\sigma_t^2}{2}\right)s_t(X_t)+b_tX_t\right]\mathrm dt+\sigma_t\,\mathrm dW_t. \tag{46} \]</p>
+<p><strong>给定高斯路径的系数，只用边缘 score 就能算出整个 SDE 漂移。</strong></p>
+<p>把真实 score 换成学到的网络预测，就得到实际使用的漂移：</p>
+<p>\[ \boxed{v_t^\theta(x)=\left(a_t+\frac{\sigma_t^2}{2}\right)s_t^\theta(x)+b_tx.} \]</p>
+<p>因此，<strong>同一个 score 网络可以支持 ODE 采样或 SDE 采样</strong>：取 \(\sigma_t=0\)，漂移就是转换后的 ODE 速度；取非零 \(\sigma_t\)，则同时使用修正后的漂移和随机增量。</p>
+<p><strong>用线性例子核对两个噪声系数：</strong>在 \(t=0.5\) 时，条件分布是 \(\mathcal N(0.5z,0.25I_d)\)，标准差为 0.5。即使选择 \(\sigma_t=0\)，从不同随机起点出发、按对应的条件 ODE 运动，一群样本仍能形成这个分布。关掉途中新增的噪声，并没有关掉初始采样的随机性，也没有改掉预设的 \(\beta_t=1-t\)。若改用 SDE，就要使用上面配套的漂移修正，才能维持同一分布路径。</p>
+
+<h3>Theorem 19：Fokker–Planck 方程解释这项修正</h3>
+<p>总漂移的公式已经给出，接下来核对它为什么能保持原来的分布路径。上一节的连续性方程描述 ODE 下的概率收支；对于 SDE，噪声还会引起扩散，需要多一项。沿用前面的总漂移记号 \(v_t\)：</p>
+<p>\[ \mathrm dX_t=v_t(X_t)\,\mathrm dt+\sigma_t\,\mathrm dW_t. \]</p>
+<p>当 \(\sigma_t\) 只依赖时间、作用于各个坐标方向时，分布满足 Fokker–Planck 方程：</p>
+<p>\[ \boxed{\partial_t p_t=-\operatorname{div}(p_tv_t)+\frac{\sigma_t^2}{2}\Delta p_t.} \tag{49} \]</p>
+<p>右侧第一项是<strong>漂移造成的概率流动</strong>，第二项是<strong>噪声造成的扩散</strong>；\(\Delta\) 是表示空间二阶变化的拉普拉斯算子。这里用方程核对分布变化，不需要先学会求解这个偏微分方程。</p>
+<p>把 \(v_t=u_t^{\mathrm{target}}+\frac{\sigma_t^2}{2}s_t\) 代入，score 修正对分布的贡献恰好是 \(-\frac{\sigma_t^2}{2}\Delta p_t\)。它和噪声引起的扩散相抵消：</p>
+<p>\[ \partial_t p_t=-\operatorname{div}(p_tu_t^{\mathrm{target}})\underbrace{-\frac{\sigma_t^2}{2}\Delta p_t}_{\text{score 修正的贡献}}+\underbrace{\frac{\sigma_t^2}{2}\Delta p_t}_{\text{随机噪声的贡献}}. \]</p>
+<p>后两项抵消，只剩原来 ODE 的连续性方程。因此，在相同初始分布与适用条件下，指定的分布路径仍然成立。</p>
+<details class="note-detail" id="detail-sde-correction"><summary>展开代入：Score 修正为什么恰好抵消扩散项？</summary>
+<p>先补齐记号：这里的空间导数都对 \(x\) 计算，拉普拉斯算子把各坐标方向的二阶导数相加：</p>
+<p>\[ \Delta p_t=\sum_{i=1}^d\frac{\partial^2p_t}{\partial x_i^2}=\operatorname{div}(\nabla p_t). \tag{48} \]</p>
+<p><strong>先看 score 修正会给分布带来哪一项。</strong>把总漂移 \(v_t=u_t^{\mathrm{target}}+\frac{\sigma_t^2}{2}s_t\) 代入漂移项：</p>
+<p>\[ \begin{aligned}
+-\operatorname{div}(p_tv_t)
+&amp;=-\operatorname{div}\!\left(p_tu_t^{\mathrm{target}}+\frac{\sigma_t^2}{2}p_ts_t\right)\\
+&amp;=-\operatorname{div}(p_tu_t^{\mathrm{target}})-\frac{\sigma_t^2}{2}\operatorname{div}(p_ts_t).
+\end{aligned} \]</p>
+<p>这里用到散度的线性性质：和的散度等于散度之和。\(\sigma_t\) 不依赖位置，所以对空间求导时可以把它作为常数提出。</p>
+<p><strong>再把新增项中的 \(p_ts_t\) 化简。</strong>用 score 的定义，密度因子恰好约掉：</p>
+<p>\[ p_ts_t=p_t\frac{\nabla_xp_t}{p_t}=\nabla_xp_t. \]</p>
+<p>再对两边取散度，用拉普拉斯算子的定义：</p>
+<p>\[ \operatorname{div}(p_ts_t)=\operatorname{div}(\nabla_xp_t)=\Delta p_t. \]</p>
+<p>因此，修正带来的新增项就是 \(-\frac{\sigma_t^2}{2}\Delta p_t\)。最后把 Fokker–Planck 方程本来就有的 \(+\frac{\sigma_t^2}{2}\Delta p_t\) 加回去，得到正文中的抵消关系。这也解释了漂移为什么要加上 \(+\frac{\sigma_t^2}{2}s_t\)：它经过负散度后，产生了需要的负扩散项。</p>
+</details>
+<p class="note-focus"><strong>抵消的是分布演化中新增的两项，不是单条轨迹上的随机位移。</strong>路径仍会随机波动；整群样本的分布却可以保持原定的演化。这个方程用于说明采样构造为何有效，后面的训练仍采用回归损失。</p>
+
+<details class="note-detail" id="detail-langevin"><summary>可选补充：Remark 20，Langevin Dynamics 怎样保持一个分布？</summary>
+<p>如果概率路径不随时间变化，即 \(p_t=p\)，可取 \(u_t^{\mathrm{target}}=0\)。此时剩下：</p>
+<p>\[ \mathrm dX_t=\frac{\sigma_t^2}{2}\nabla\log p(X_t)\,\mathrm dt+\sigma_t\,\mathrm dW_t. \tag{50} \]</p>
+<p>这就是 Langevin dynamics（朗之万动力学）。在适用条件下，如果初始样本已经服从 \(p\)，之后仍服从 \(p\)：score 漂移与噪声扩散配合，维持这个分布。</p>
+<figure class="lecture-figure" id="figure-10">
+<a href="images/figure-10-langevin.png" target="_blank" rel="noopener noreferrer"><img src="images/figure-10-langevin.png" alt="Figure 10 原图：Langevin 动力学中的粒子与密度估计，展示在此例中样本分布逐渐接近五峰高斯混合分布。" loading="lazy"></a>
+<figcaption>Figure 10，原文第 <a href="https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=30" target="_blank" rel="noopener noreferrer">30 页</a>，含原图注。点击图片可放大。</figcaption>
+</figure>
+<p>图中时间延伸到 5，展示了从其他初始分布逐渐接近平衡分布的情形。<strong>“从 \(p\) 出发保持 \(p\)”与“从其他初始分布出发收敛到 \(p\)”是不同结论。</strong>后者需要进一步的遍历性、噪声与时间条件，不能仅凭平稳性就保证，更不是有限几步便精确得到 \(p\)。</p>
+<p><strong>Remark 21 的另一个可选方向：</strong>GLASS Flows 通过额外的采样机制与 ODE 演化组合，构造随机转移。固定 ODE 和初值本身仍给出确定轨迹；随机性来自额外的机制。这不是下面 score matching 损失成立所必需的内容。</p>
+</details>
+
+<h2 id="score-matching">4.3 Score Matching：把 Score 变成可学习的目标</h2>
+<p>前面回答了“如果知道 score，怎样生成”。现在回到训练：<strong>我们只有数据样本，算不出整体密度，怎样让网络学到它的 score？</strong>这里沿用 Flow Matching 的关键办法：不直接提供难算的边缘目标，而是提供能算出的条件标签。</p>
+
+<h3>Score 网络、SM 损失与条件 Score 标签</h3>
+<p>用网络 \(s_t^\theta(x)\) 逼近边缘 score \(s_t(x)=\nabla_x\log p_t(x)\)。网络接收当前状态与时间，输出一个与 \(x\) 同维度的向量。</p>
+<p><strong>定义里有梯度，不代表训练时要先学习密度，再对密度求导。</strong>这里的网络直接输出一个向量；我们用下面的监督标签，让这个向量逐渐逼近真正的 score。输入、预测、误差、参数更新，仍然是回归训练的流程。</p>
+<p>这里要区分三个量：\(s_t(x)\) 是<strong>想学到、但不能直接计算的目标</strong>；\(s_t(x\mid z)\) 是<strong>知道训练数据 \(z\) 后可以计算的标签</strong>；\(s_t^\theta(x)\) 是<strong>由可训练参数 \(\theta\) 决定的网络预测</strong>。训练就是调整第三个量，让它逼近第一个量；第二个量为这件事提供可用的监督。</p>
+<p>理想的 Score Matching（SM）损失，是预测 score 与边缘 score 的均方误差：</p>
+<p>\[ \mathcal L_{\mathrm{SM}}(\theta)=\mathbb E_{t,\,x\sim p_t}\!\left[\|s_t^\theta(x)-s_t(x)\|^2\right]. \]</p>
+<p>其中 \(t\sim\mathrm{Unif}[0,1]\)。困难在于右边的目标 \(s_t(x)\) 通常未知。训练时却知道抽到的数据点 \(z\)，于是改用条件 score：</p>
+<p>\[ \boxed{\mathcal L_{\mathrm{CSM}}(\theta)=\mathbb E_{t,z,x}\!\left[\|s_t^\theta(x)-s_t(x\mid z)\|^2\right].} \]</p>
+<p>这里依次抽取 \(t\sim\mathrm{Unif}[0,1]\)、\(z\sim p_{\mathrm{data}}\)、\(x\sim p_t(\cdot\mid z)\)。CSM 是 <em>Conditional Score Matching</em>；在这里的加噪构造中，也称为 <em>Denoising Score Matching</em>（去噪 score matching）。</p>
+<p>读这个损失时，先看方括号：<strong>网络预测减去本次可计算的标签，再把各坐标误差平方后相加。</strong>外面的期望表示对不同时间、不同数据和不同加噪结果平均；实际用小批量样本的平均误差估计它。优化器根据这个误差更新 \(\theta\)，这里训练用的参数梯度，与定义 score 时对位置 \(x\) 求的梯度，是两件事。</p>
+<p><strong>数据点 \(z\) 用于构造输入和标签，不交给网络。</strong>网络要从 \((x,t)\) 预测混合分布的 score，而不是在已知终点的前提下计算条件 score。</p>
+<p>上述期望损失的讨论要求期望有限。若零噪声端附近的标签发散，训练时需要限制时间范围或使用合适的权重；含除法的标签要求 \(\beta_t&gt;0\)。</p>
+
+<h3>Theorem 22：为什么条件标签能训练边缘 Score？</h3>
+<figure class="lecture-figure lecture-box" id="lecture-theorem-22">
+<a href="images/lecture-theorem-22.png" target="_blank" rel="noopener noreferrer"><img src="images/lecture-theorem-22.png" alt="Theorem 22 英文原版：SM 与 CSM 的期望损失只差与网络参数无关的常数，因此参数梯度一致。" loading="lazy"></a>
+<figcaption>Theorem 22，原文第 <a href="https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=31" target="_blank" rel="noopener noreferrer">31 页</a>。点击图片可放大。</figcaption>
+</figure>
+<p>在所需期望有限、可交换求导与期望等条件下，<strong>SM 与 CSM</strong> 两种期望损失只差一个与 \(\theta\) 无关的加法常数，因此参数梯度相同。它对应上一节“FM 可以用 CFM 来训练”的结论；<strong>这里没有在说 Flow Matching 与 Score Matching 的损失相同。</strong></p>
+<p>这个结论也可以接回 4.1 节：同一个 \((x,t)\) 可以由不同的干净数据产生，因而对应不同的条件 score 标签。网络看不到来源 \(z\)，对同一个输入只能给出一个预测；平方误差回归的理想预测，就是这些可能标签的条件均值：</p>
+<p>\[ \underbrace{\mathbb E[s_t(x\mid Z)\mid X_t=x]}_{\text{平方误差回归的理想目标}}=\int s_t(x\mid z)q_t(z\mid x)\,\mathrm dz=s_t(x). \]</p>
+<p><strong>这就是前面推导后验平均公式的用途：它说明，条件标签平均之后正好是我们想学的边缘 score。</strong>训练不必在每个位置收集所有标签再手工平均；按联合分布抽样并最小化回归误差，就在优化这个期望目标，也不需要提前计算后验权重。</p>
+<p>把两节并排想：<strong>上一节，条件速度的回归均值是边缘速度；这一节，条件 score 的回归均值是边缘 score。</strong>可计算的标签不同，用条件回归学习整体目标的逻辑相同。</p>
+<p>原框中“最优网络等于真实 score”的结论，要结合网络能够表示目标、达到相应最优解等理想条件理解；实际训练得到的是近似。期望梯度一致，也不表示每个小批量的梯度完全一样。</p>
+
+<h3>Example 23：高斯路径下，Score 标签就是缩放后的噪声</h3>
+<p>抽到 \(z,\epsilon,t\) 后，用 \(x_t=\alpha_tz+\beta_t\epsilon\) 合成带噪状态。这个 \(x_t\) 是一次训练时直接构造的输入，不需要先沿轨迹从 0 模拟到 \(t\)。</p>
+<p>把它代入式 (40)。分子中先消去两项 \(\alpha_tz\)，分母再约掉一个 \(\beta_t\)：</p>
+<p>\[ \begin{aligned}
+s_t(x_t\mid z)&amp;=-\frac{x_t-\alpha_tz}{\beta_t^2}\\
+&amp;=-\frac{(\alpha_tz+\beta_t\epsilon)-\alpha_tz}{\beta_t^2}\\
+&amp;=-\frac{\beta_t\epsilon}{\beta_t^2}=\boxed{-\frac{\epsilon}{\beta_t}}.
+\end{aligned} \tag{51} \]</p>
+<p>因此，<strong>标签只需要本次抽到的噪声和已知系数</strong>，不用计算真实数据密度，也不用求解 ODE 或 SDE。对应的损失是：</p>
+<p>\[ \boxed{\mathcal L_{\mathrm{CSM}}(\theta)=\mathbb E\!\left[\left\|s_t^\theta(x_t)+\frac{\epsilon}{\beta_t}\right\|^2\right].} \]</p>
+<p>注意这里是加号，因为“预测减标签”减去的是 \(-\epsilon/\beta_t\)。现在可以具体比较两节的训练了。在线性路径 \(x_t=tz+(1-t)\epsilon\)、\(0&lt;t&lt;1\) 下：</p>
+<table><thead><tr><th>训练</th><th>网络输入</th><th>本次条件标签</th></tr></thead><tbody>
+<tr><td>CFM</td><td>\((x_t,t)\)</td><td>速度：\(z-\epsilon\)</td></tr>
+<tr><td>CSM</td><td>\((x_t,t)\)</td><td>Score：\(-\epsilon/(1-t)\)</td></tr>
+</tbody></table>
+<p>前者预测“怎么动”，后者预测“局部密度怎么变”。接下来换一种更方便的输出形式：既然 score 标签就是缩放后的噪声，为什么不直接预测噪声？</p>
+
+<h3>从 Score 预测到噪声预测：重新参数化与重新加权</h3>
+<p><strong>先对齐刚才的记号：</strong>上表用了线性例子，所以写 \(-\epsilon/(1-t)\)；下面回到一般高斯路径 \(x_t=\alpha_tz+\beta_t\epsilon\)，因此写 \(-\epsilon/\beta_t\)。在线性例子里，\(\beta_t=1-t\)，两种写法完全一致。</p>
+<p>再区分“标签”和“预测”：\(\epsilon\) 是训练时实际抽到、因此已知的标准高斯噪声；\(\epsilon_t^\theta(x)\) 是网络根据带噪状态作出的噪声预测。输入里真正加上的项是 \(\beta_t\epsilon\)，而这里选择让网络预测<strong>缩放前的 \(\epsilon\)</strong>。</p>
+<p>条件 score 标签是噪声标签乘以 \(-1/\beta_t\)。相应地，把网络的噪声预测乘以同一个系数，就得到 score 估计：</p>
+<p>\[ \boxed{\widehat s_t^\theta(x)=-\frac{\epsilon_t^\theta(x)}{\beta_t}.} \]</p>
+<p>如果继续使用上表的线性例子，这一行就是 \(\widehat s_t^\theta(x)=-\epsilon_t^\theta(x)/(1-t)\)。因此，这里既有<strong>从具体系数 \(1-t\) 回到一般记号 \(\beta_t\)</strong>，也有<strong>从已知训练标签 \(\epsilon\) 转到网络预测 \(\epsilon_t^\theta(x)\)</strong>，不是引入了新的噪声参数。</p>
+<p><strong>“重新参数化”就是换一种网络输出的表达方式。</strong>选择预测噪声后，不必再训练第二个 score 网络。把这个换算代入 CSM 损失，会得到：</p>
+<p>\[ \mathcal L_{\mathrm{CSM}}(\theta)=\mathbb E\!\left[\frac{1}{\beta_t^2}\|\epsilon_t^\theta(x_t)-\epsilon\|^2\right]. \]</p>
+<details class="note-detail" id="detail-noise-loss"><summary>展开代入：Score 误差为什么变成带权的噪声误差？</summary>
+<p>把 \(\widehat s_t^\theta=-\epsilon_t^\theta/\beta_t\) 代入预测减标签的表达式：</p>
+<p>\[ \begin{aligned}
+\widehat s_t^\theta(x_t)+\frac{\epsilon}{\beta_t}
+&amp;=-\frac{\epsilon_t^\theta(x_t)}{\beta_t}+\frac{\epsilon}{\beta_t}\\
+&amp;=-\frac{\epsilon_t^\theta(x_t)-\epsilon}{\beta_t}.
+\end{aligned} \]</p>
+<p>误差平方后，负号消失，分母变成 \(\beta_t^2\)，因此有：</p>
+<p>\[ \left\|\widehat s_t^\theta(x_t)+\frac{\epsilon}{\beta_t}\right\|^2=\frac{1}{\beta_t^2}\|\epsilon_t^\theta(x_t)-\epsilon\|^2. \]</p>
+<p>对抽到的时间、数据和噪声取期望，就得到正文中的带权噪声回归。这个等式要求预测之间也按上述公式转换。</p>
+</details>
+<p>进一步去掉这个权重，就得到这里介绍的 DDPM 简化噪声预测目标：</p>
+<p>\[ \boxed{\mathcal L_{\mathrm{DDPM}}(\theta)=\mathbb E_{t,z,\epsilon}\!\left[\|\epsilon_t^\theta(\alpha_tz+\beta_t\epsilon)-\epsilon\|^2\right].} \]</p>
+<p><strong>换输出形式和去掉时间权重是两步。</strong>前一步按公式换算；后一步改变各时间段误差的重要性，因此实际训练梯度会变。正权重下，理想的逐时刻回归仍预测噪声的条件均值，但有限网络的训练效果可能不同。</p>
+
+<h3>Algorithm 4：一次训练更新做什么？</h3>
+<figure class="lecture-figure" id="algorithm-4">
+<a href="images/algorithm-4-training.png" target="_blank" rel="noopener noreferrer"><img src="images/algorithm-4-training.png" alt="Algorithm 4 英文原版：抽取数据、时间和噪声，构造带噪状态，用条件 score 或噪声作标签更新网络。" loading="lazy"></a>
+<figcaption>Algorithm 4，原文第 <a href="https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=32" target="_blank" rel="noopener noreferrer">32 页</a>。点击图片可放大。</figcaption>
+</figure>
+<p>每个小批量按同一流程进行：<strong>独立抽取数据、时间与噪声 → 构造 \(x_t\) → 比较预测与标签 → 更新网络参数</strong>。</p>
+<p>继续用前面的 \(z=3,\epsilon=-1,t=0.5\)：网络输入仍是 \((1,0.5)\)。若训练 score 网络，本次标签是 2；假设它目前输出 1.6，这个样本的平方误差就是 \((1.6-2)^2=0.16\)。对小批量误差取平均，再对参数 \(\theta\) 反向传播，完成一次更新。之后重新抽样，重复这个过程。</p>
+<p>如果选择上述简化噪声预测目标，仍按这个流程训练，本次标签是 \(-1\)。网络看不到本次的干净数据或噪声来源，理想预测是<strong>给定输入后的噪声条件均值</strong>，并不保证能精确还原每一次加进去的噪声。</p>
+
+<h3 id="trained-sampling">训练完成后：把预测转换成漂移，再逐步生成</h3>
+<p>训练时直接合成输入与标签。生成时则从新的 \(X_0\sim p_{\mathrm{init}}\) 出发，固定网络参数，逐步更新样本。根据训练时选择的输出形式，使用下表对应的一行，得到 score 估计：</p>
+<table id="score-output-conversions"><thead><tr><th>选择的网络输出</th><th>换算得到的 score 估计 \(\widehat s_t^\theta(x)\)</th></tr></thead><tbody>
+<tr><td>Score</td><td>\(s_t^\theta(x)\)</td></tr>
+<tr><td>噪声</td><td>\(-\epsilon_t^\theta(x)/\beta_t\)</td></tr>
+<tr><td>干净数据（Denoiser）</td><td>\(\dfrac{\alpha_tD_t^\theta(x)-x}{\beta_t^2}\)</td></tr>
+</tbody></table>
+<p><strong>三种输出在这里汇合：</strong>前面 Remark 16 的干净数据预测，也能接到同一套采样步骤。得到 \(\widehat s_t^\theta\) 后，用已知的高斯路径系数计算总漂移：</p>
+<p>\[ v_t^\theta(x)=\left(a_t+\frac{\sigma_t^2}{2}\right)\widehat s_t^\theta(x)+b_tx. \]</p>
+<p>再用前面学过的 Euler–Maruyama 方法：</p>
+<p>\[ \boxed{X_{t+h}\approx X_t+h\,v_t^\theta(X_t)+\sigma_t\sqrt h\,\xi_t,}\qquad \xi_t\sim\mathcal N(0,I_d). \]</p>
+<p>这里 \(\xi_t\) 是每一步重新独立抽取的噪声，与训练时构造标签的 \(\epsilon\) 区分。\(\sigma_t=0\) 时成为 ODE 采样；\(\sigma_t&gt;0\) 时，还要加入随机增量及与之配套的漂移修正。</p>
+<p>每一步可以按这个顺序读：<strong>把当前状态和时间交给网络 → 得到 score 估计 → 换算成漂移 → 加上漂移位移与随机位移 → 得到下一时刻状态。</strong>生成时没有已知数据终点 \(z\)，因此也不再构造训练标签；网络输出现在用于移动样本，而不是用于更新参数。</p>
+<p>这些转换在对应系数有定义的时刻使用；涉及 \(\alpha_0=0\) 或 \(\beta_1=0\) 的端点，要依据极限或稳定参数化单独处理。实际网络与有限步求解得到的是近似样本，终点分布接近数据分布是训练与采样希望实现的目标。</p>
+
+<h3>Summary</h3>
+<p>回头看这一章，可以把它与 Flow Matching 接成一条完整的思路：</p>
+<ul>
+<li><strong>先定路径：</strong>用数据、噪声和时间系数规定中间分布，希望它从噪声走向数据。</li>
+<li><strong>再学可用的函数：</strong>Flow Matching 回归条件速度标签；Score Matching 回归条件 score 标签，也可以改为预测噪声。理想回归学到的是给定当前输入后的条件均值。</li>
+<li><strong>最后生成：</strong>速度可直接用于 ODE；本章高斯路径的 score 可先转换成速度。选择 SDE 时，还要加入配套的漂移修正与随机扰动。</li>
+</ul>
+<p><strong>本章新增的关键，是把“估计分布的局部变化”与“构造生成运动”连接起来。</strong>训练阶段学习函数，生成阶段调用这个函数推进样本。</p>
+<figure class="lecture-figure lecture-box" id="lecture-summary-24">
+<a href="images/lecture-summary-24-p32.png" target="_blank" rel="noopener noreferrer"><img src="images/lecture-summary-24-p32.png" alt="Summary 24 英文原版，第 32 页：条件与边缘 score 的定义，以及随机采样总结的开头。" loading="lazy"></a>
+<a href="images/lecture-summary-24-p33.png" target="_blank" rel="noopener noreferrer"><img src="images/lecture-summary-24-p33.png" alt="Summary 24 英文原版续页，第 33 页：score matching 损失、速度与 score 的转换，以及训练后的 SDE 采样公式。" loading="lazy"></a>
+<figcaption>Summary 24，原文第 <a href="https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=32" target="_blank" rel="noopener noreferrer">32 页</a>、<a href="https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=33" target="_blank" rel="noopener noreferrer">33 页</a>。保留完整跨页内容，点击图片可放大。</figcaption>
+</figure>
