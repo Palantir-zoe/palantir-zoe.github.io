@@ -50,6 +50,7 @@ def append_reference(html, slug):
         "diffusion-models": "第 2.2 节 Diffusion Models",
         "flow-matching": "第 3 章 Flow Matching，3.1–3.3 节",
         "score-matching": "第 4 章 Score Functions and Score Matching，4.1–4.3 节",
+        "guidance": "第 5 章 Guidance: How to Condition on a Prompt，5.1–5.2 节",
     }
     snippet = ROOT / "tools/reference.html"
     if slug not in scopes or not snippet.is_file() or re.search(r'\bid=["\']references["\']', html):

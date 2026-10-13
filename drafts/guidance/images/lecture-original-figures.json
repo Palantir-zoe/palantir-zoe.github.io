@@ -1,0 +1,230 @@
+{
+  "source_pdf_relative_to_workspace": "lecture_notes.pdf",
+  "source_sha256": "d61ddac4329c49043c633c47fadd5293204bce4c9ab28e994a04c79e7251e622",
+  "source_title": "An Introduction to Flow Matching and Diffusion Models",
+  "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf",
+  "authors": [
+    "Peter Holderrieth",
+    "Ezra Erives"
+  ],
+  "source_year": 2026,
+  "source_page_size_points": [
+    612,
+    792
+  ],
+  "dpi": 300,
+  "coordinate_system": "PDF points (1/72 inch), top-left origin, [left, top, right, bottom]",
+  "renderer": "pdftoppm (Poppler)",
+  "renderer_version": "pdftoppm version 24.04.0\nCopyright 2005-2024 The Poppler Developers - http://poppler.freedesktop.org\nCopyright 1996-2011, 2022 Glyph & Cog, LLC",
+  "processing": "Original PDF regions rendered directly; no redrawing, OCR replacement, or resizing",
+  "reproduction_script": "learning-notes/tools/extract_guidance_figures.py",
+  "figures": [
+    {
+      "filename": "figure-11-corgi-guidance.png",
+      "pdf_page_1_based": 35,
+      "crop_points_top_left_ltrb": [
+        54,
+        78,
+        558,
+        300
+      ],
+      "content": "Figure 11: vanilla versus strengthened corgi conditioning, including all twelve original samples and the complete original caption",
+      "reading_notes": [
+        "Left: vanilla guidance. Right: reinforced prompt/class conditioning with guidance scale w = 4.",
+        "The original caption labels the right group classifier guidance, then says classifier-free guidance. Chapter 5 page 39 explicitly identifies Figure 11 as class-based classifier-free guidance. Preserve the original image and clarify the inconsistent caption in the accompanying explanation.",
+        "The illustration motivates stronger adherence to y; it is not a proof that increasing guidance always improves quality."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=35",
+      "pixel_crop_ltrb": [
+        225,
+        325,
+        2325,
+        1250
+      ],
+      "image_size_px": [
+        2100,
+        925
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/figure-11-corgi-guidance.png",
+      "output_sha256": "b2696f4931e4de80d92514c8710144e2110f5ed63b3f1a548b4afe175943e0df"
+    },
+    {
+      "filename": "figure-12-guidance-vector-fields.png",
+      "pdf_page_1_based": 36,
+      "crop_points_top_left_ltrb": [
+        54,
+        78,
+        558,
+        391
+      ],
+      "content": "Figure 12: full classifier and classifier-free vector-field diagrams with the complete original caption",
+      "rows_top_to_bottom": [
+        "classifier guidance",
+        "classifier-free guidance"
+      ],
+      "reading_notes": [
+        "The gray unguided vector plus the green prompt-dependent vector gives the blue guided vector. Scaling the green vector produces the red reinforced vector.",
+        "Upper row: the prompt-dependent component is a_t times the x-gradient of log p_t(y|x). Lower row: the same component is the guided vector minus the unguided vector.",
+        "The caption's first sentence is grammatically incomplete; the diagrams and Equations 59-62 identify the decomposition precisely. The differentiated quantity is a log-probability, with the factor a_t converting the score difference to a velocity difference.",
+        "For w > 1 this is extrapolation beyond the guided vector, not a convex average."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=36",
+      "pixel_crop_ltrb": [
+        225,
+        325,
+        2325,
+        1630
+      ],
+      "image_size_px": [
+        2100,
+        1305
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/figure-12-guidance-vector-fields.png",
+      "output_sha256": "f70f47ec0248feb3fa1b944b9bc6d4d9b2a64d26dbe7995fbda9fb5af2587bad"
+    },
+    {
+      "filename": "figure-13-guidance-scales.png",
+      "pdf_page_1_based": 39,
+      "crop_points_top_left_ltrb": [
+        54,
+        78,
+        558,
+        300
+      ],
+      "content": "Figure 13: all three MNIST guidance-scale sample grids, w = 1, 2, 4, including the complete original caption",
+      "guidance_scales_left_to_right": [
+        1,
+        2,
+        4
+      ],
+      "reading_notes": [
+        "Each grid groups samples by the requested digit class; the panels compare different inference-time guidance scales.",
+        "The visual example illustrates stronger class adherence, not exact distribution matching or a universal optimal value of w.",
+        "Training-time label-drop probability eta and inference-time guidance scale w are different controls."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=39",
+      "pixel_crop_ltrb": [
+        225,
+        325,
+        2325,
+        1250
+      ],
+      "image_size_px": [
+        2100,
+        925
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/figure-13-guidance-scales.png",
+      "output_sha256": "b017da52907a7b981e3da0dc1da6f1817a31ba7df3069e05f13d23505e69b4c9"
+    },
+    {
+      "filename": "algorithm-5-cfg-training.png",
+      "pdf_page_1_based": 38,
+      "crop_points_top_left_ltrb": [
+        54,
+        333,
+        558,
+        523
+      ],
+      "content": "Complete Algorithm 5, including title, Require line, all nine steps, conditional-velocity loss and enclosing rules",
+      "reading_notes": [
+        "Sample paired data (z,y), time and Gaussian noise; construct x = alpha_t z + beta_t epsilon.",
+        "Drop only y, not z or the velocity target. Both guided and unguided inputs share one neural network.",
+        "The algorithm's line 6 denotes label-drop probability by p; the prose and Summary 27 use eta for the same hyperparameter.",
+        "Guidance scale w is not used in this training loop; it combines network outputs during sampling."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=38",
+      "pixel_crop_ltrb": [
+        225,
+        1387,
+        2325,
+        2180
+      ],
+      "image_size_px": [
+        2100,
+        793
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/algorithm-5-cfg-training.png",
+      "output_sha256": "c60d12ac217a1ebfe6e147592fd2b92b9ddf48fa508ba131c2d2f3673bd45fb9"
+    },
+    {
+      "filename": "lecture-summary-27-p38.png",
+      "pdf_page_1_based": 38,
+      "crop_points_top_left_ltrb": [
+        54,
+        549,
+        558,
+        667
+      ],
+      "content": "Summary 27 part 1: complete heading, guided/unguided fields, CFG combination Equation 65 and the sentence continued on page 39",
+      "box_id": "summary-27",
+      "part": 1,
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=38",
+      "pixel_crop_ltrb": [
+        225,
+        2287,
+        2325,
+        2780
+      ],
+      "image_size_px": [
+        2100,
+        493
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/lecture-summary-27-p38.png",
+      "output_sha256": "86ed78280d0ba032e0f2c93f90d0242520d64349e4e96cbf5d14aff5ca3f77d9"
+    },
+    {
+      "filename": "lecture-summary-27-p39.png",
+      "pdf_page_1_based": 39,
+      "crop_points_top_left_ltrb": [
+        54,
+        316,
+        558,
+        598
+      ],
+      "content": "Summary 27 part 2: full continuation, training objective Equations 66-67, training procedure and inference-time ODE sampling",
+      "box_id": "summary-27",
+      "part": 2,
+      "reading_notes": [
+        "Summary 27 spans pages 38 and 39; display the two parts consecutively in their original order.",
+        "Its final row promises adherence to y rather than exact sampling from p_data(.|y) for w > 1; the immediately following prose makes this limitation explicit."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=39",
+      "pixel_crop_ltrb": [
+        225,
+        1316,
+        2325,
+        2492
+      ],
+      "image_size_px": [
+        2100,
+        1176
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/lecture-summary-27-p39.png",
+      "output_sha256": "0c03bacd435de2d93d1953acd0622f76d87a77ab3545330c6429808be76184b9"
+    }
+  ]
+}

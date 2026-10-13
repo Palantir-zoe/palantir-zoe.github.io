@@ -1,0 +1,6 @@
+{
+  "slug": "guidance",
+  "title": "Guidance: How to Condition on a Prompt",
+  "section": "第 5 章",
+  "description": "从条件生成出发，理解 Vanilla Guidance 与 Classifier-Free Guidance，串起条件训练、引导强度以及 ODE、SDE 采样中的运动规则。"
+}

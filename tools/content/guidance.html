@@ -1,0 +1,293 @@
+<p>前几章讨论了怎样从简单噪声生成数据。现在还希望<strong>生成结果符合指定的类别或文字描述</strong>：输入“柯基犬”时生成柯基犬，输入“海边日落”时生成相应的画面。</p>
+<p>数学上的变化是：原来希望从整体数据分布 \(p_{\mathrm{data}}(z)\) 采样，现在希望从<strong>给定提示词后的数据分布</strong> \(p_{\mathrm{data}}(z\mid y)\) 采样。这里 \(y\) 可以是类别标签，也可以是文字提示词。</p>
+<p class="note-focus"><strong>本章有两步：</strong>先让网络接收提示词，学会按条件生成；再在采样时加强提示词带来的影响，这就是 Classifier-Free Guidance（CFG）的作用。CFG 可以用于 Flow Model，也可以用于 Diffusion Model。</p>
+
+<h3>先认清 \(z\) 与 \(y\)：训练样本和生成条件</h3>
+<table><thead><tr><th>符号</th><th>表示什么</th><th>训练时</th><th>生成时</th></tr></thead><tbody>
+<tr><td>\(z\)</td><td>干净数据样本</td><td>已知，取自训练集</td><td>没有预设的 \(z\)</td></tr>
+<tr><td>\(y\)</td><td>类别或文字提示</td><td>已知，与 \(z\) 配对</td><td>已知，由用户指定</td></tr>
+<tr><td>\(x_t\)</td><td>时刻 \(t\) 的状态</td><td>由 \(z\) 和噪声构造</td><td>从噪声逐步更新</td></tr>
+</tbody></table>
+<p><strong>训练时，\(z\) 是已知的。</strong>我们从数据集中读取一对 \((z,y)\)，用 \(z\) 构造带噪状态 \(x_t\) 和速度监督；网络接收 \(x_t,y,t\)。生成时则只有用户给出的 \(y\) 和不断更新的 \(x_t\)，没有一张预先指定、等待复原的目标图片。即使提示词同为“柯基犬”，也可以生成不同的柯基犬。</p>
+<p>\(p_t(x\mid z)\) 描述固定一张干净图片 \(z\) 后，时刻 \(t\) 的状态怎样分布；\(p_t(x\mid y)\) 描述固定提示词 \(y\) 后，所有符合它的图片在这一时刻共同形成的分布。由于一个提示词通常对应许多张图片，后一种分布要把前一种分布混合起来。若构造路径时不再额外使用 \(y\)，由全概率公式得到：</p>
+<p>\[
+p_t(x\mid y)=\int p_t(x\mid z)\,p_{\mathrm{data}}(z\mid y)\,\mathrm dz.
+\]</p>
+<p>例如，“柯基犬”对应许多不同的图片 \(z\)。每张图片都有自己的 \(p_t(x\mid z)\)；式中的 \(p_{\mathrm{data}}(z\mid y)\) 给出这些图片在该条件下的权重。对 \(z\) 积分，就是按权重合并它们在时刻 \(t\) 的分布，得到 \(p_t(x\mid y)\)。<strong>这是对目标概率路径的描述；生成单个样本时不必遍历训练图片。</strong></p>
+<p><strong>术语约定（Remark 25）：</strong>前几章的 <em>conditional</em> 多指固定干净样本 \(z\) 后的路径；本章用 <em>guided</em> 强调生成还要服从提示词 \(y\)。下面先讨论怎样训练普通的条件生成模型，再讨论怎样加强提示词的作用。</p>
+
+<h2 id="vanilla-guidance">5.1 Vanilla Guidance：把提示词交给网络</h2>
+
+<h3>给速度网络增加提示词输入</h3>
+<p>对 Flow Model，原来的速度网络输入是 \((x,t)\)，现在变成：</p>
+<p>\[
+u^\theta:\mathbb R^d\times\mathcal Y\times[0,1]\longrightarrow\mathbb R^d,
+\qquad (x,y,t)\longmapsto u_t^\theta(x\mid y).
+\]</p>
+<p>\(\mathcal Y\) 表示提示词所在的空间。网络仍然输出一个与 \(x\) 同维的速度向量，但现在会根据 \(y\) 决定怎样移动。提示词怎样编码成网络能接收的向量，是下一章的内容；这里先把它当作已提供的输入。</p>
+<p>如果生成过程还加入预先指定强度的随机噪声，就得到条件 Diffusion Model 的 SDE：\(\mathrm dX_t=u_t^\theta(X_t\mid y)\,\mathrm dt+\sigma_t\,\mathrm dW_t\)。\(\sigma_t\) 可以随时间变化；当它恒为零时，就退化为下面先讨论的 Flow Model。CFG 的 SDE 用法放在文末说明。</p>
+<p>固定提示词后，生成过程就是：</p>
+<p>\[
+\begin{aligned}
+\text{初始化：}\quad&amp;X_0\sim p_{\mathrm{init}},\\
+\text{演化：}\quad&amp;\frac{\mathrm dX_t}{\mathrm dt}=u_t^\theta(X_t\mid y),\\
+\text{希望达到的目标：}\quad&amp;X_1\sim p_{\mathrm{data}}(\cdot\mid y).
+\end{aligned}
+\]</p>
+<p>终点能否接近目标分布，取决于学到的速度和数值求解的精度；同一个 \(y\) 下，不同的初始噪声也会生成不同样本。</p>
+
+<h3>训练目标：在 Flow Matching 中加入配对条件</h3>
+<p>训练仍沿用 Flow Matching：用已知样本 \(z\) 与噪声构造 \(x_t\) 和目标速度，以平方误差训练网络。现在数据是配对的 \((z,y)\)，网络还要接收 \(y\)；固定 \(y,t\) 后，损失写成：</p>
+<p>\[
+\mathbb E_{z\sim p_{\mathrm{data}}(\cdot\mid y),\;x\sim p_t(\cdot\mid z)}
+\left[\left\|u_t^\theta(x\mid y)-u_t^{\mathrm{target}}(x\mid z)\right\|^2\right].
+\tag{57}
+\]</p>
+<p>式（57）是固定 \(y\) 后分析训练目标的写法；它不要求先把具有相同提示词的图片分成一组。实际训练直接读取数据集里的配对 \((z,y)\)，并对不同提示词与时刻一起求平均：</p>
+<p>\[
+\boxed{\mathcal L_{\mathrm{CFM}}^{\mathrm{guided}}(\theta)
+=\mathbb E_{\substack{(z,y)\sim p_{\mathrm{data}}(z,y),\;t\sim\mathrm{Unif}[0,1]\\x\sim p_t(\cdot\mid z)}}
+\left[\left\|u_t^\theta(x\mid y)-u_t^{\mathrm{target}}(x\mid z)\right\|^2\right].}
+\tag{58}
+\]</p>
+<p>为把式（58）写成可直接计算的量，沿用高斯路径，取与 \((z,y)\) 独立的噪声 \(\epsilon\)。中间状态和它的速度为：</p>
+<p>\[
+x_t=\alpha_tz+\beta_t\epsilon,\qquad
+\epsilon\sim\mathcal N(0,I_d),\qquad
+r_t=\dot\alpha_tz+\dot\beta_t\epsilon.
+\]</p>
+<p>若取 \(\alpha_0=\beta_1=0,\ \alpha_1=\beta_0=1\)，则 \(x_0=\epsilon\sim\mathcal N(0,I_d)\)、\(x_1=z\)。因此这里的高斯例子对应 \(p_{\mathrm{init}}=\mathcal N(0,I_d)\)；换用其他初始分布时，路径的起点也要与之匹配。</p>
+<p>\(r_t\) 是这条路径在时刻 \(t\) 的速度，用作本次训练的监督目标。提示词 \(y\) 则是网络输入，两者的角色如下：</p>
+<table><thead><tr><th>训练中的角色</th><th>本次使用的量</th></tr></thead><tbody>
+<tr><td>网络输入</td><td>\((x_t,y,t)\)</td></tr>
+<tr><td>网络预测</td><td>\(u_t^\theta(x_t\mid y)\)</td></tr>
+<tr><td>监督目标</td><td>\(r_t=\dot\alpha_tz+\dot\beta_t\epsilon\)</td></tr>
+<tr><td>本次平方损失</td><td>\(\|u_t^\theta(x_t\mid y)-r_t\|^2\)</td></tr>
+</tbody></table>
+<p>例如，线性路径取 \(\alpha_t=t,\ \beta_t=1-t\)，就有 \(x_t=tz+(1-t)\epsilon\)，速度监督是 \(z-\epsilon\)。这里的路径只依赖 \(z\) 和噪声；提示词通过训练样本的配对关系和网络输入发挥作用。</p>
+<p>在同一时刻 \(t\)，同一个带噪状态 \(x\) 和提示词 \(y\) 可能对应不止一张干净图片，因此样本各自的目标速度也可能不同。平方误差下，网络的理想预测是这些速度的条件平均：</p>
+<p>\[
+u_t^{\mathrm{target}}(x\mid y)
+=\mathbb E\!\left[r_t\mid X_t=x,Y=y\right].
+\]</p>
+<p>这个平均会更看重那些更可能产生当前 \(x\) 的干净样本 \(z\)。由此得到的整体速度场，推动前面混合出的 \(p_t(x\mid y)\) 随时间演化；生成时使用的就是这个学到的速度场。</p>
+
+<h2 id="classifier-free-guidance">5.2 Classifier-Free Guidance：加强提示词带来的方向</h2>
+
+<h3>为什么已经输入了提示词，还要额外引导？</h3>
+<p>前一节的普通条件生成以 \(p_{\mathrm{data}}(\cdot\mid y)\) 为目标。如果模型欠拟合，或图像与文字的配对有噪声，生成结果可能没有充分体现提示词。CFG 在<strong>采样时放大提示词引起的速度变化</strong>，用引导强度 \(w\) 控制放大的程度；这也会改变原来的采样规则。</p>
+<figure class="lecture-figure" id="figure-11">
+<a href="images/figure-11-corgi-guidance.png" target="_blank" rel="noopener noreferrer"><img src="images/figure-11-corgi-guidance.png" alt="Figure 11 原图：以柯基犬为条件，比较普通条件生成与加强引导后的样本，附完整英文图注。" loading="lazy"></a>
+<figcaption>Figure 11，原文第 <a href="https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=35" target="_blank" rel="noopener noreferrer">35 页</a>。Peter Holderrieth &amp; Ezra Erives，MIT 6.S184（2026），原图引自其参考文献 [18]。原图注同时使用 classifier guidance 与 classifier-free guidance 两种名称；这里仅用它展示加强引导后的外观差异。点击图片可放大。</figcaption>
+</figure>
+<p>图中左侧三列的结果有些偏离“柯基犬”，右侧三列的柯基犬特征更明显。接下来要弄清楚：加强引导时，采样速度的哪一部分被放大了？</p>
+
+<h3>Classifier Guidance：先找出提示词额外贡献了什么</h3>
+<p>我们要比较同一 \(x,t\) 下，有提示词与没有提示词时的速度；两者之差就是准备放大的部分。先用上一章的 score 和 Bayes 公式弄清这个差值的含义。Score 是密度的对数梯度，描述当前位置附近密度增大的方向。在同一条高斯概率路径下，写出有条件和无条件的 score：</p>
+<p>\[
+s_t(x\mid y)=\nabla_x\log p_t(x\mid y),\qquad
+s_t(x)=\nabla_x\log p_t(x).
+\]</p>
+<p>前者对应给定 \(y\) 后的分布，后者对应全部数据的分布。沿用上一章的 score—速度关系：</p>
+<p>\[
+u_t^{\mathrm{target}}(x\mid y)=a_t s_t(x\mid y)+b_tx,
+\qquad
+u_t^{\mathrm{target}}(x)=a_t s_t(x)+b_tx.
+\tag{59}
+\]</p>
+<p>\(a_t,b_t\) 由选定的 \(\alpha_t,\beta_t\) 决定。有条件与无条件两边使用同一条路径，因此这里的系数相同。</p>
+<details class="note-detail" id="detail-guidance-coefficients"><summary>回看：这里的 \(a_t,b_t\) 是什么？</summary>
+<p>上一章 Proposition 1 给出：</p>
+<p>\[
+a_t=\beta_t^2\frac{\dot\alpha_t}{\alpha_t}-\beta_t\dot\beta_t,
+\qquad b_t=\frac{\dot\alpha_t}{\alpha_t}.
+\]</p>
+<p>在线性路径 \(\alpha_t=t,\beta_t=1-t\) 中，\(\dot\alpha_t=1,\dot\beta_t=-1\)，因而 \(a_t=(1-t)/t,\ b_t=1/t\)。这些含分母的表达式只在相应系数非零时使用；端点需要单独处理。理解本节主线时，只需记住同一时刻两种条件使用相同的 \(a_t,b_t\)。</p>
+</details>
+
+<p><strong>接下来用 Bayes 公式，把有条件的密度拆开。</strong>固定时刻 \(t\) 后：</p>
+<p>\[
+p_t(x\mid y)=\frac{p_t(x)p_t(y\mid x)}{p_t(y)}.
+\tag{60}
+\]</p>
+<p>\(p_t(y\mid x)\) 表示看到时刻 \(t\) 的带噪状态 \(x\) 后，条件 \(y\) 有多可能成立。如果 \(y\) 是类别标签，可以由一个能够识别带噪数据的分类器来估计。</p>
+<p>先取对数，再对 \(x\) 求梯度：</p>
+<p>\[
+\begin{aligned}
+\log p_t(x\mid y)
+&amp;=\log p_t(x)+\log p_t(y\mid x)-\log p_t(y),\\
+\nabla_x\log p_t(x\mid y)
+&amp;=\nabla_x\log p_t(x)+\nabla_x\log p_t(y\mid x).
+\end{aligned}
+\tag{61}
+\]</p>
+<p>固定 \(y,t\) 后，\(\log p_t(y)\) 不随 \(x\) 变化，因此对 \(x\) 求导为零。有条件 score 于是分成两部分：整体分布的 score，以及提示词带来的额外变化。</p>
+<p>将式（61）代入式（59）：</p>
+<p>\[
+\begin{aligned}
+u_t^{\mathrm{target}}(x\mid y)
+&amp;=a_t\!\left[s_t(x)+\nabla_x\log p_t(y\mid x)\right]+b_tx\\
+&amp;=u_t^{\mathrm{target}}(x)+a_t\nabla_x\log p_t(y\mid x).
+\end{aligned}
+\]</p>
+<p>现在可以只放大第二部分：</p>
+<p>\[
+\widetilde u_t(x\mid y)
+=u_t^{\mathrm{target}}(x)+w\,a_t\nabla_x\log p_t(y\mid x).
+\tag{62}
+\]</p>
+<p>\(w\) 称为 <strong>guidance scale（引导强度）</strong>。在本章的记法中，\(w=1\) 对应原来的普通条件速度；\(w&gt;1\) 进一步加强条件的影响。如果单独训练一个分类器来计算 \(\nabla_x\log p_t(y\mid x)\)，就得到 <em>Classifier Guidance</em>。</p>
+<p>这种做法需要额外的分类器，并且它还要能处理不同噪声水平的 \(x\)。如果不单独训练分类器，能否从生成模型本身得到提示词造成的变化？</p>
+
+<h3>Classifier-Free Guidance：用两种预测之差，替代分类器方向</h3>
+<p>把刚才的速度分解移项，就有：</p>
+<p>\[
+\boxed{u_t^{\mathrm{target}}(x\mid y)-u_t^{\mathrm{target}}(x)
+=a_t\nabla_x\log p_t(y\mid x).}
+\]</p>
+<p>左边是<strong>有条件速度减去无条件速度</strong>。两种速度之间的差值，恰好对应右边的提示词方向；因此，只要能预测这两种速度，就不必另训分类器来计算它。</p>
+<p>把这个差值代回式（62），得到 CFG 的核心公式：</p>
+<p>\[
+\begin{aligned}
+\widetilde u_t(x\mid y)
+&amp;=u_t^{\mathrm{target}}(x)
++w\!\left[u_t^{\mathrm{target}}(x\mid y)-u_t^{\mathrm{target}}(x)\right]\\
+&amp;=(1-w)u_t^{\mathrm{target}}(x)+w\,u_t^{\mathrm{target}}(x\mid y).
+\end{aligned}
+\]</p>
+<p>第一行给出了直观读法：以无条件速度为基础，把“有条件减无条件”的差值乘上 \(w\)。当 \(w=1\) 时得到普通条件速度；当 \(w&gt;1\) 时，沿着同一个差值方向继续外推。第二行只是展开括号，不能把它理解为对两个概率分布做加权平均。</p>
+<figure class="lecture-figure" id="figure-12">
+<a href="images/figure-12-guidance-vector-fields.png" target="_blank" rel="noopener noreferrer"><img src="images/figure-12-guidance-vector-fields.png" alt="Figure 12 原图：比较 classifier guidance 与 classifier-free guidance 如何放大与提示词相关的向量分量。" loading="lazy"></a>
+<figcaption>Figure 12，原文第 <a href="https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=36" target="_blank" rel="noopener noreferrer">36 页</a>，含完整图注。Peter Holderrieth &amp; Ezra Erives，MIT 6.S184（2026）。点击图片可放大。</figcaption>
+</figure>
+<p>读 Figure 12 可以先看左列：灰色箭头是无条件速度，蓝色箭头是有条件速度；从灰色终点指向蓝色终点的绿色箭头，就是提示词带来的<strong>速度差值</strong>。再看右列：把这段差值放大成橙色箭头，与灰色速度相加，得到红色的引导速度。上排用分类器计算差值，下排直接用两种速度相减。<strong>“Classifier-Free”省去的是额外的分类器，提示词仍然要输入模型。</strong>图中的对应关系基于理想目标场；实际网络预测会有误差。</p>
+<p><strong>Remark 26：</strong>两种速度作线性组合也能用于其他概率路径；前面借助 score 对差值作出的解释，则用到了高斯路径的速度—score 关系。</p>
+
+<h3>同一个网络怎样同时学会“有提示词”和“无提示词”？</h3>
+<p>引入一个专门的空条件 \(\varnothing\)，表示<strong>没有提供提示信息</strong>。用同一组参数 \(\theta\)，分别计算：</p>
+<p>\[
+u_t^\theta(x\mid y)\quad\text{和}\quad u_t^\theta(x\mid\varnothing).
+\]</p>
+<p>这两个输出来自同一个网络，只是条件输入不同。</p>
+<p>问题在于，训练集里的样本通常都有配对条件。为了让网络见到“没有条件”的情况，训练时以概率 \(\eta\) 随机丢弃提示词。用 \(\bar y\) 区分丢弃后的网络输入：</p>
+<p>\[
+\bar y=
+\begin{cases}
+\varnothing,&amp;\text{以概率 }\eta,\\
+y,&amp;\text{以概率 }1-\eta.
+\end{cases}
+\]</p>
+<p>丢弃提示词后，仍用同一组 \(z,t,\epsilon\) 构造 \(x_t\) 和速度监督。在高斯路径下，式（58）的训练目标具体写成：</p>
+<p>\[
+\boxed{\mathcal L_{\mathrm{CFM}}^{\mathrm{CFG}}(\theta)
+=\mathbb E\!\left[
+\left\|u_t^\theta(x_t\mid\bar y)
+-\bigl(\dot\alpha_tz+\dot\beta_t\epsilon\bigr)\right\|^2
+\right].}
+\tag{63}
+\]</p>
+<p>\[
+(z,y)\sim p_{\mathrm{data}}(z,y),\quad
+t\sim\mathrm{Unif}[0,1],\quad
+\epsilon\sim\mathcal N(0,I_d),\quad
+x_t=\alpha_tz+\beta_t\epsilon,
+\quad y\longrightarrow\bar y\text{ 按上述规则丢弃}.
+\tag{64}
+\]</p>
+<p><strong>丢弃的只有提示词输入，监督目标不变。</strong>例如，一张柯基犬图片的描述这次被丢掉了，仍要用这张图片构造 \(x_t\) 和速度标签；网络则在没有描述的情况下完成这次速度预测。</p>
+<p>当丢弃操作独立于样本内容时，空条件分支会接触整个数据分布，而不是只接触某一种类别。平方误差下，两种输入的理想预测分别是：</p>
+<p>\[
+u_t^\theta(x\mid y)\approx\mathbb E[r_t\mid X_t=x,Y=y],
+\qquad
+u_t^\theta(x\mid\varnothing)\approx\mathbb E[r_t\mid X_t=x].
+\]</p>
+<p>有提示词的分支学习给定 \(y\) 后的速度；空条件分支学习整体数据的速度。同一个网络通过这两种训练输入获得两种预测，因此需要 \(0&lt;\eta&lt;1\)，让两种输入都能出现。</p>
+
+<h3>Algorithm 5：在条件训练中随机丢弃提示词</h3>
+<figure class="lecture-figure" id="algorithm-5">
+<a href="images/algorithm-5-cfg-training.png" target="_blank" rel="noopener noreferrer"><img src="images/algorithm-5-cfg-training.png" alt="Algorithm 5 原文：高斯概率路径下的 classifier-free guidance 训练，包含配对数据抽样、时间与噪声抽样、条件丢弃、速度损失和参数更新。" loading="lazy"></a>
+<figcaption>Algorithm 5，原文第 <a href="https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=38" target="_blank" rel="noopener noreferrer">38 页</a>。算法第 6 行把丢弃概率记为 \(p\)，相邻正文记为 \(\eta\)；本文统一使用 \(\eta\)。点击图片可放大。</figcaption>
+</figure>
+<p>算法第 6 行对应随机丢弃提示词；<strong>引导强度 \(w\) 只在采样时使用。</strong></p>
+
+<h3>采样：组合两种速度，再求解 ODE</h3>
+<p>训练完成后，选择提示词 \(y\) 和引导强度 \(w\)，从 \(X_0\sim p_{\mathrm{init}}\) 开始。每到一个状态 \(x=X_t\)，在<strong>相同的 \(x,t\)</strong> 下分别计算有条件与空条件预测。把前面的理想速度组合换成网络预测，就得到：</p>
+<p>\[
+\boxed{\widetilde u_t^\theta(x\mid y)
+=(1-w)u_t^\theta(x\mid\varnothing)+w\,u_t^\theta(x\mid y).}
+\tag{65}
+\]</p>
+<p>将组合后的速度用于 ODE 求解；以 Euler 为例：</p>
+<p>\[
+X_{t+h}\approx X_t+h\,\widetilde u_t^\theta(X_t\mid y).
+\]</p>
+<p>每走一步，都在新的当前位置重新计算两种速度。组合的是每一步的速度向量，最终只得到一条演化轨迹；训练好的参数 \(\theta\) 在采样过程中保持固定。</p>
+<p>一个一维速度例子可以看清 \(w\) 的作用。假设在某个相同的 \(x,t\)，无条件预测为 \(1\)，有条件预测为 \(3\)，那么：</p>
+<p>\[
+\widetilde u=1+w(3-1)=1+2w.
+\]</p>
+<table><thead><tr><th>引导强度</th><th>本例组合速度</th><th>含义</th></tr></thead><tbody>
+<tr><td>\(w=0\)</td><td>\(1\)</td><td>只使用无条件预测</td></tr>
+<tr><td>\(w=1\)</td><td>\(3\)</td><td>普通条件预测，对应 Vanilla Guidance</td></tr>
+<tr><td>\(w=2\)</td><td>\(5\)</td><td>沿有条件与无条件预测的差值继续外推</td></tr>
+</tbody></table>
+<p>这里的 \(1,3,5\) 都是某个位置的速度数值，不是概率，也不是图像质量分数。</p>
+<table><thead><tr><th>容易混淆的参数</th><th>在什么时候使用</th><th>控制什么</th></tr></thead><tbody>
+<tr><td>\(\eta\)</td><td>训练时</td><td>有多少训练样本暂时不提供提示词</td></tr>
+<tr><td>\(w\)</td><td>采样时</td><td>把有条件与无条件预测之间的差值放大多少</td></tr>
+</tbody></table>
+<p>因此，改变 \(w\) 通常不需要重新训练网络；但没有学过空条件输入的网络，也不会因为在采样时填入 \(\varnothing\)，就自动得到可靠的无条件预测。</p>
+<figure class="lecture-figure" id="figure-13">
+<a href="images/figure-13-guidance-scales.png" target="_blank" rel="noopener noreferrer"><img src="images/figure-13-guidance-scales.png" alt="Figure 13 原图：MNIST 手写数字生成在 guidance scale 为 1、2、4 时的结果对比，附完整原图注。" loading="lazy"></a>
+<figcaption>Figure 13，原文第 <a href="https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=39" target="_blank" rel="noopener noreferrer">39 页</a>。左、中、右的 \(w\) 分别为 \(1,2,4\)。Peter Holderrieth &amp; Ezra Erives，MIT 6.S184（2026）。点击图片可放大。</figcaption>
+</figure>
+<p>Figure 13 的三栏分别对应 \(w=1,2,4\)。前十行按数字 0–9 排列，最下一行是混合类别；可以横向比较同一类别的一整行，观察引导强度变化时数字写法的差异。每栏是一组样本，横向位置相同的图片并非同一条生成轨迹的不同时刻。</p>
+<p class="note-focus"><strong>\(w&gt;1\) 时，运动规则已经被主动改变。</strong>即使原来的有条件速度是精确的，也不能再保证终点仍严格服从 \(p_{\mathrm{data}}(\cdot\mid y)\)。CFG 强化条件符合度主要依靠经验效果；引导过强可能损失多样性或产生失真，不能把“更符合提示词”等同于“更精确地恢复原始条件分布”。</p>
+
+<details class="note-detail" id="detail-guidance-conventions"><summary>可选：为什么有时会看到 \((1+\gamma)u_{\mathrm{cond}}-\gamma u_{\mathrm{uncond}}\)？</summary>
+<p>只是引导强度的参数化起点不同。令 \(w=1+\gamma\)，则：</p>
+<p>\[
+(1-w)u_{\mathrm{uncond}}+wu_{\mathrm{cond}}
+=u_{\mathrm{cond}}+\gamma(u_{\mathrm{cond}}-u_{\mathrm{uncond}}).
+\]</p>
+<p>本章的 \(w=1\) 与后一种记法的 \(\gamma=0\)，都表示普通条件预测。比较公式时，先看“哪一个参数值对应不额外加强”，就不容易把强度数值直接套错。</p>
+</details>
+
+<h3>Summary：把训练和采样分开记</h3>
+<p><strong>训练：</strong>随机保留或丢弃提示词，用已知的 \(z\)、噪声和 \(t\) 算出速度目标，再回归网络预测。<strong>采样：</strong>固定网络参数，把有条件与无条件预测的差值乘上 \(w\)，用组合后的速度求解 ODE。</p>
+<details class="note-detail" id="detail-summary-27"><summary>查看英文原版 Summary 27：完整训练目标与采样步骤</summary>
+<figure class="lecture-figure" id="lecture-summary-27">
+<a href="images/lecture-summary-27-p38.png" target="_blank" rel="noopener noreferrer"><img src="images/lecture-summary-27-p38.png" alt="Summary 27 第一部分：CFG 速度场的线性组合定义，式65。" loading="lazy"></a>
+<a href="images/lecture-summary-27-p39.png" target="_blank" rel="noopener noreferrer"><img src="images/lecture-summary-27-p39.png" alt="Summary 27 续页：式66至67的训练目标、条件丢弃，以及ODE采样的初始化和演化步骤。" loading="lazy"></a>
+<figcaption>Summary 27，原文第 <a href="https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=38" target="_blank" rel="noopener noreferrer">38 页</a>、<a href="https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=39" target="_blank" rel="noopener noreferrer">39 页</a>，保留完整续页。式（66）–（67）重述训练目标及其抽样、丢弃规则，框末给出 ODE 生成流程。点击各部分可放大。</figcaption>
+</figure>
+</details>
+
+<h3>Remark 28：CFG 怎样用于 Diffusion Model 的 SDE？</h3>
+<p>CFG 加强的是有条件与无条件预测的差别，生成轨迹不必因此限定为确定性的。在同一高斯路径下，可以把前面两种速度预测换算成 score；若模型直接预测 score，也可以组合两种 score，再按上一章的方式构造 SDE 漂移。<strong>是否使用 CFG，与是否在途中加入随机噪声，是两个不同的选择。</strong></p>
+<details class="note-detail" id="detail-guidance-sde"><summary>展开：把 CFG 与上一章的 score—速度—SDE 公式接起来</summary>
+<p>仍在同一高斯概率路径下，在同一个 \(x,t\) 组合：</p>
+<p>\[
+\widetilde s_t^\theta(x\mid y)
+=(1-w)s_t^\theta(x\mid\varnothing)+ws_t^\theta(x\mid y).
+\]</p>
+<p>由于两种条件使用相同的 \(a_t,b_t\)，并且两个权重之和为 \(1\)，组合后的 ODE 速度为：</p>
+<p>\[
+\begin{aligned}
+\widetilde u_t^\theta(x\mid y)
+&amp;=(1-w)\bigl[a_ts_t^\theta(x\mid\varnothing)+b_tx\bigr]
++w\bigl[a_ts_t^\theta(x\mid y)+b_tx\bigr]\\
+&amp;=a_t\widetilde s_t^\theta(x\mid y)+b_tx.
+\end{aligned}
+\]</p>
+<p>再沿用上一章的漂移修正，把组合后的预测用于 SDE：</p>
+<p>\[
+\mathrm dX_t=
+\underbrace{\left[\widetilde u_t^\theta(X_t\mid y)
++\frac{\sigma_t^2}{2}\widetilde s_t^\theta(X_t\mid y)\right]}_{\text{SDE 的总漂移}}
+\mathrm dt+\sigma_t\,\mathrm dW_t.
+\]</p>
+<p>这里 \(\widetilde u_t^\theta\) 仍表示 ODE 速度，整个方括号才是 SDE 的漂移。不能只在原 ODE 后面加一份噪声，却省去对应的漂移修正。前面的 \(\beta_t\) 规定高斯条件路径的噪声尺度；这里的 \(\sigma_t\) 控制采样时新增的随机噪声，两者不是同一个参数。若从速度预测换回 score，还要在 \(a_t\ne0\) 且公式有定义时使用 \(s=(u-b_tx)/a_t\)，端点另行处理。</p>
+<p>当 \(w=1\) 且目标预测精确时，回到上一章针对条件路径的构造。对于 \(w&gt;1\)，CFG 本身已经改变目标运动规则，不能再直接套用“ODE 与 SDE 必然保持原条件分布”的结论。实践中使用的是加强条件后的采样规则，效果需结合模型与数值求解判断。</p>
+</details>
+<p>至此，条件训练、引导增强与 ODE/SDE 采样的关系已经连起来。下一章再讨论文字与时间怎样编码进网络、采用什么网络结构，以及如何在图像或视频规模上实现这些计算。</p>
