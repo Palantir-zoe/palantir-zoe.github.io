@@ -34,5 +34,12 @@
     "title": "Guidance: How to Condition on a Prompt",
     "section": "第 5 章",
     "description": "从条件生成出发，理解 Vanilla Guidance 与 Classifier-Free Guidance，串起条件训练、引导强度以及 ODE、SDE 采样中的运动规则。"
+  },
+  {
+    "slug": "seq2seq-attention",
+    "title": "图解 Seq2Seq 与 Attention：中文译注",
+    "section": "NLP 阅读笔记",
+    "description": "从 RNN 编码器—解码器的固定上下文瓶颈，理解 Attention 如何逐步读取源句，并为学习 Transformer 补足背景。",
+    "collection": "nlp"
   }
 ]

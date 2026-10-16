@@ -42,18 +42,31 @@ def load_posts(root=ROOT):
                 raise ValueError(f"Article {slug} needs a text field: {key}")
         if not post["title"].strip() or not post["section"].strip():
             raise ValueError(f"Article {slug} needs a non-empty title and section")
+        if post.get("collection", "flow-diffusion") not in ("flow-diffusion", "nlp"):
+            raise ValueError(f"Article {slug} has an unknown collection")
     return posts
 
 
 def render_post_list(posts):
-    entries = []
-    for post in posts:
-        entries.append(
-            '<li><p class="post-meta">' + escape(post["section"]) + '</p>'
-            '<h2><a href="posts/' + post["slug"] + '/">' + escape(post["title"]) + '</a></h2>'
-            '<p>' + escape(post["description"]) + '</p></li>'
-        )
-    return '<ol class="post-list">' + ''.join(entries) + '</ol>'
+    collections = (
+        ("flow-diffusion", "Flow Matching 与 Diffusion Models", "按章节阅读，每一节都是一篇独立笔记。"),
+        ("nlp", "NLP 与 Transformer", "从经典序列模型与注意力机制开始，逐步理解 Transformer。"),
+    )
+    sections = []
+    for key, heading, intro in collections:
+        entries = []
+        for post in posts:
+            if post.get("collection", "flow-diffusion") != key:
+                continue
+            entries.append(
+                '<li><p class="post-meta">' + escape(post["section"]) + '</p>'
+                '<h2><a href="posts/' + post["slug"] + '/">' + escape(post["title"]) + '</a></h2>'
+                '<p>' + escape(post["description"]) + '</p></li>'
+            )
+        if entries:
+            sections.append('<section><h2>' + escape(heading) + '</h2><p>' + escape(intro)
+                            + '</p><ol class="post-list">' + ''.join(entries) + '</ol></section>')
+    return ''.join(sections)
 
 
 def navigation(posts, index):
