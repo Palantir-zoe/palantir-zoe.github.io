@@ -1,0 +1,39 @@
+<h2 id="worked-example">教学例子：用四个数走完一轮 EM</h2>
+<p>这一节的所有数字都是独立构造的教学例子，不是书中 Old Faithful 数据集的实验。我们只取四个观测：</p>
+\[X=\{-2,-1,1,2\}.\]
+<p>用两个一维高斯拟合，初值为：</p>
+\[\pi_1^{old}=\pi_2^{old}=0.5,\quad \mu_1^{old}=-1,\quad\mu_2^{old}=1,\quad (\sigma_1^2)^{old}=(\sigma_2^2)^{old}=1.\]
+<h3>第一步：固定旧参数，计算每个点的责任度</h3>
+<p>在这个对称初值下，共同的高斯归一化因子和混合权重会约去。对第一个分量：</p>
+\[\gamma_{n1}=\frac{\exp[-(x_n+1)^2/2]}{\exp[-(x_n+1)^2/2]+\exp[-(x_n-1)^2/2]}=\frac1{1+e^{2x_n}}.\]
+<table><thead><tr><th>观测 x</th><th>分量 1 的责任度</th><th>分量 2 的责任度</th><th>怎样理解？</th></tr></thead><tbody>
+<tr><td>−2</td><td>0.982014</td><td>0.017986</td><td>强烈倾向左侧分量，但未硬置零</td></tr>
+<tr><td>−1</td><td>0.880797</td><td>0.119203</td><td>位于左侧均值，也仍有另一种可能</td></tr>
+<tr><td>1</td><td>0.119203</td><td>0.880797</td><td>与前一行对称</td></tr>
+<tr><td>2</td><td>0.017986</td><td>0.982014</td><td>强烈倾向右侧分量</td></tr>
+</tbody></table>
+<p>每一行和为 1。按列加起来，得到 \(N_1=N_2=2\)。这里恰好为整数是数据与初值对称造成的；一般有效样本量可以是 1.7 或 2.3。</p>
+<h3>第二步：固定这张责任度表，更新参数</h3>
+<p>第一个均值是带权平均：</p>
+\[\mu_1^{new}=\frac{0.982014(-2)+0.880797(-1)+0.119203(1)+0.017986(2)}2\approx-1.344825.\]
+<p>对称地，\(\mu_2^{new}\approx1.344825\)。注意：E 步到现在都没有重新计算；整次 M 步使用同一组旧责任度。更新方差时，残差却应围绕<strong>本次的新均值</strong>计算：</p>
+\[(\sigma_1^2)^{new}=\frac{\sum_n\gamma_{n1}(x_n-\mu_1^{new})^2}{N_1}\approx0.691447.\]
+<p>另一个分量方差相同，混合比例仍为 \(N_k/N=0.5\)。这是“谁贡献了多少，就以多少权重计入估计”的具体含义。</p>
+<h3>第三步：重新计算观测数据对数似然</h3>
+\[\ell(\theta)=\sum_{n=1}^4\log\left[\pi_1\mathcal N(x_n\mid\mu_1,\sigma_1^2)+\pi_2\mathcal N(x_n\mid\mu_2,\sigma_2^2)\right].\]
+<table><thead><tr><th>状态</th><th>均值</th><th>方差</th><th>观测对数似然</th></tr></thead><tbody>
+<tr><td>初始参数</td><td>−1、1</td><td>1、1</td><td>−7.158187</td></tr>
+<tr><td>一轮 EM 后</td><td>−1.344825、1.344825</td><td>0.691447、0.691447</td><td>−6.461856</td></tr>
+</tbody></table>
+<p>−6.46 大于 −7.16，意味着似然改善了。这一轮没有得到“真实设备标签”的保证；我们只确认按模型目标取得了改善。下一轮会用新参数重新计算责任度，而不是永久保存第一轮的表。</p>
+
+<h3>互动：把 E 步和 M 步分开按</h3>
+<p>蓝线和橙线是两个<strong>乘过混合权重的分量密度</strong>，黑线是它们的和，底部圆点是四个观测。先按 E 步，看责任度；再按 M 步，看曲线怎样改变。每次点击只推进一半，便于辨认“谁在变化”。</p>
+<div class="em-lab" id="em-lab">
+<div class="lab-controls"><label>初始状态 <select id="em-preset"><option value="separated">两个中心分开</option><option value="symmetric">两个分量完全重合</option></select></label><button type="button" id="em-reset">重置</button><button type="button" id="em-step">执行 E 步</button></div>
+<p class="lab-status" id="em-status" aria-live="polite">初始参数已给定：先计算责任度。</p>
+<svg id="em-chart" viewBox="0 0 760 310" role="img" aria-label="两个高斯分量及其混合密度"><text x="24" y="40">启用 JavaScript 可查看并操作 EM 演示；完整手算见上文。</text></svg>
+<div class="lab-readout" id="em-readout"></div>
+<div class="table-scroll"><table><thead><tr><th>x</th><th>γ₁（最近一次 E 步）</th><th>γ₂（最近一次 E 步）</th></tr></thead><tbody id="em-responsibilities"><tr><td colspan="3">点击“执行 E 步”后显示。</td></tr></tbody></table></div>
+<p class="source-note">演示使用上面的四个点。实现限制方差至少为 0.05；这是明确的可行域约束，一维 M 步使用该约束下的最优方差。本例常规路径不会触及下限。重合初值会保持对称，说明不同分量可以停在相同参数；它不能被当作已经找到全局最优的证据。</p>
+</div>

@@ -7,6 +7,8 @@
 
 当前公开文章分别位于 `docs/posts/introduction/`、`docs/posts/flow-models/`、`docs/posts/diffusion-models/`、`docs/posts/flow-matching/`、`docs/posts/score-matching/`、`docs/posts/guidance/`，各目录内的 `index.html` 是对应正文。
 
+PRML 第九章《混合模型与 EM》中文精读笔记位于 `docs/posts/prml-mixture-models-em/`，已整理 K-means、高斯混合、Bernoulli 混合、贝叶斯线性回归及一般 EM 的推导。可编辑分章节正文在 `tools/content/prml-ch09/`，使用 `python tools/render_prml_ch09.py` 重新生成页面与首页目录。原书 PDF 仅用于本地核对，不作为网站文件发布。
+
 Diffusion Models 已完成审核并发布，包含原文 Figure 3 和 Summary 7。可编辑正文在 `tools/content/diffusion-models.html`，本地预览与原图保存在 `drafts/diffusion-models/`；后续编辑、预览与发布步骤见 [维护说明](drafts/diffusion-models/README.md)。
 
 Flow Matching 已完成审核并发布，覆盖第 3 章的 3.1–3.3 节，包含原文 Figure 4–7、Algorithm 3、关键定理和英文总结。可编辑正文在 `tools/content/flow-matching.html`；后续编辑、预览与发布步骤见 [维护说明](drafts/flow-matching/README.md)。

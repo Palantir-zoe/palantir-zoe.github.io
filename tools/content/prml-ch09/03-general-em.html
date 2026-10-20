@@ -1,0 +1,197 @@
+﻿<h2 id="general-em">9.4 一般 EM：把难优化的似然，变成轮流改进的下界</h2>
+<p class="source">原书 §9.4，书页 450–455；核心公式 (9.69)–(9.79)。本节沿原文论证路线展开中间步骤；例子、限定条件与自测题为补充说明。</p>
+<p>前面在高斯混合模型中，我们已经见过两步交替：先计算每个分量对每个样本的责任度，再用责任度更新参数。现在要回答：<strong>为什么取这个后验分布？为什么优化“完整数据对数似然的期望”有用？每轮更新保证了什么？</strong>关键是把目标拆成“可优化的下界”和“下界到目标的距离”。</p>
+
+<h3>1. 困难来自哪里：对数外面想求导，里面却在求和</h3>
+<p>用 \(X\) 表示观测数据，\(Z\) 表示潜变量，\(\theta\) 表示参数。模型给出联合分布 \(p(X,Z\mid\theta)\)，但最大似然要优化的是消去潜变量之后的分布：</p>
+\[
+p(X\mid\theta)=\sum_Zp(X,Z\mid\theta),\qquad
+\ell(\theta)=\log p(X\mid\theta).
+\]
+<p class="source">原书公式 (9.69)，书页 450；连续潜变量将求和换成积分。</p>
+<p>例如混合模型的一项是 \(\log\sum_k\pi_kp(x_n\mid k,\theta)\)。对数包着求和，各分量的参数纠缠在一起；如果知道样本属于哪个分量，完整数据对数似然通常更容易处理。EM 利用这种结构差异，但不保证任意模型的两步都容易计算。</p>
+
+<h3>2. 引入 q：它是对潜变量的一整份概率分配</h3>
+<p>任取归一化分布 \(q(Z)\)。它与后验 \(p(Z\mid X,\theta)\) 是两个对象；只有精确 E 步完成时，我们才特意将两者设成相同。定义：</p>
+\[
+\mathcal L(q,\theta)=\sum_Zq(Z)\log\frac{p(X,Z\mid\theta)}{q(Z)},
+\]
+\[
+\mathrm{KL}(q\Vert p_\theta)
+=\sum_Zq(Z)\log\frac{q(Z)}{p(Z\mid X,\theta)},\qquad
+p_\theta(Z)=p(Z\mid X,\theta).
+\]
+<p class="source">原书公式 (9.71)、(9.72)，书页 450。</p>
+<p>\(\mathcal L\) 对参数 \(\theta\) 是普通函数，对整个分布 \(q\) 则是泛函：改变 \(q\)，就是改变潜变量各状态的权重。KL 的方向不能调换：这里在 \(q\) 下取期望，后者是当前参数下的潜变量后验。</p>
+<aside class="note"><strong>支持域条件。</strong>以下假设 \(0&lt;p(X\mid\theta)&lt;\infty\)，并且相关期望有限。要使 KL 有限，凡是 \(q(Z)&gt;0\) 的地方，后验也应为正；连续情形对应 \(q\) 对后验绝对连续。若把正的 \(q\) 放在模型认为不可能的位置，会出现 KL 为 \(+\infty\)、下界为 \(-\infty\)，不能把二者当作有限数机械相加。\(q=0\) 的项采用通常的零贡献约定。</aside>
+
+<h3>3. 逐行证明：对数似然 = 下界 + 后验 KL</h3>
+<p>从贝叶斯关系开始。在后验有定义的位置：</p>
+\[
+p(X,Z\mid\theta)=p(Z\mid X,\theta)p(X\mid\theta),
+\]
+\[
+\log p(X,Z\mid\theta)=\log p(Z\mid X,\theta)+\ell(\theta).
+\]
+<p>这就是原书公式 (9.73)。代入下界定义，利用 \(\sum_Zq(Z)=1\)：</p>
+\[
+\begin{aligned}
+\mathcal L(q,\theta)
+&=\sum_Zq(Z)\bigl[\log p(Z\mid X,\theta)+\ell(\theta)-\log q(Z)\bigr]\\
+&=\ell(\theta)\sum_Zq(Z)-\sum_Zq(Z)\log\frac{q(Z)}{p(Z\mid X,\theta)}\\
+&=\ell(\theta)-\mathrm{KL}(q\Vert p_\theta).
+\end{aligned}
+\]
+<p>移项得到核心恒等式：</p>
+\[
+\boxed{\log p(X\mid\theta)=\mathcal L(q,\theta)+\mathrm{KL}(q\Vert p_\theta).}
+\]
+<p class="source">原书公式 (9.70)、(9.73) 与图 9.11，书页 450–451。</p>
+<p>KL 非负，因此 \(\mathcal L(q,\theta)\le\ell(\theta)\)。这个下界如今通常称为 ELBO。两者相等当且仅当 \(q\) 与当前后验几乎处处相同。<strong>下界与真实目标之间有一个明确的、依赖参数的间隙。</strong></p>
+<details><summary>用 Jensen 不等式，怎样得到同一个下界？</summary>
+<p>若 \(q\) 在联合分布非零的所有潜变量位置都为正，可写 \(\ell(\theta)=\log\mathbb E_q[p(X,Z\mid\theta)/q(Z)]\)。对数是凹函数，故 \(\log\mathbb E_q[R]\ge\mathbb E_q[\log R]\)，右侧就是 \(\mathcal L\)。若 \(q\) 漏掉某些联合分布为正的位置，这个期望只加总支持域内的联合概率，第一步便应写成不等式。前面的贝叶斯恒等式推导不需要额外假设 \(q\) 覆盖整个后验支持域，但仍须满足期望有限等条件。</p>
+</details>
+
+<h3>4. E 步：让下界在旧参数处准确碰到目标</h3>
+<p>当前参数为 \(\theta^{old}\)。固定它后，\(\ell(\theta^{old})\) 不随 \(q\) 改变，所以最大化下界等价于最小化后验 KL：</p>
+\[
+q^{new}(Z)=p(Z\mid X,\theta^{old}),\qquad
+\mathcal L(q^{new},\theta^{old})=\ell(\theta^{old}).
+\]
+<p>精确 E 步保留的是后验分布，不是仅取一个最可能的潜变量值。例如混合模型保留各类别责任度，而不是把每个点强行分到一个类别。实际实现不一定显式存下全部分布；只要计算后续 M 步所需的后验期望即可。</p>
+<p><strong>E 步没有改变参数，因此观测似然保持不变。</strong>变大的是下界，缩小的是它与似然的间隙。原书图 9.12 表示把下界抬到当前似然，不是让数据突然获得更高概率。</p>
+
+<h3>5. M 步为什么只需优化 Q？熵项的符号要算清楚</h3>
+<p>固定 E 步得到的后验，定义：</p>
+\[
+Q(\theta,\theta^{old})
+=\sum_Zp(Z\mid X,\theta^{old})\log p(X,Z\mid\theta).
+\]
+<p>令熵 \(H(q)=-\sum_Zq(Z)\log q(Z)\)，则：</p>
+\[
+\mathcal L(q,\theta)=\mathbb E_q[\log p(X,Z\mid\theta)]+H(q),
+\]
+\[
+\mathcal L(q^{new},\theta)=Q(\theta,\theta^{old})+H(q^{new}).
+\]
+<p class="source">原书公式 (9.74)，书页 452。式中常数是<strong>熵 \(H(q)\)</strong>，不是负熵；作者已在<a href="https://www.microsoft.com/en-us/research/wp-content/uploads/2016/05/prml-errata-2nd-20110921.pdf#page=12">官方一、二印勘误，第 12 页</a>更正措辞。连续分布对应微分熵，其值不必非负。</p>
+<p>M 步固定 \(q^{new}\)，所以熵与待优化的 \(\theta\) 无关。最大化下界等价于：</p>
+\[
+\theta^{new}\in\operatorname*{arg\,max}_{\theta}Q(\theta,\theta^{old}).
+\]
+<p>最容易写错的是把期望权重也改成新参数下的后验。这里旧后验中的 \(\theta^{old}\) 是常数，只有联合分布对数里的 \(\theta\) 在变化。例如高斯混合的 \(Q\) 为 \(\sum_{n,k}\gamma^{old}_{nk}[\log\pi_k+\log\mathcal N(x_n\mid\mu_k,\Sigma_k)]\)，更新参数时责任度不变。指数族联合分布的对数往往能展开成充分统计量，使 M 步容易计算。</p>
+
+<h3>6. 似然为什么不会下降？从紧的下界出发是关键</h3>
+<p>只要 M 步使固定 \(q^{new}\) 的下界不下降，就有：</p>
+\[
+\boxed{
+\ell(\theta^{new})
+\ge\mathcal L(q^{new},\theta^{new})
+\ge\mathcal L(q^{new},\theta^{old})
+=\ell(\theta^{old}).
+}
+\]
+<ol>
+<li>第一个不等式：新参数下 KL 仍非负。</li>
+<li>第二个不等式：M 步改进固定 \(q\) 的下界。</li>
+<li>最后的等式：E 步使下界在旧参数处贴紧似然。</li>
+</ol>
+<p>最后一点至关重要。仅让某个松的下界增加，不能保证真实目标增加，因为间隙也会变化。标准 EM 利用了每轮开始时的精确贴合。</p>
+<p>M 步结束后，手里仍是旧参数的后验 \(q^{new}\)，通常不再等于 \(p(Z\mid X,\theta^{new})\)。于是出现非零 KL，下一次 E 步才将其消除。精确地说：</p>
+\[
+\ell(\theta^{new})-\ell(\theta^{old})
+=\bigl[\mathcal L(q^{new},\theta^{new})-\mathcal L(q^{new},\theta^{old})\bigr]
++\mathrm{KL}(q^{new}\Vert p_{\theta^{new}}).
+\]
+<p>似然增量至少等于下界增量。特殊情况下新旧后验相同，KL 仍可为零，不能说它必定严格大于零。<span class="source">原书图 9.13–9.14，书页 452–453。</span></p>
+
+<h3>7. 单调性保证到哪里为止？</h3>
+<p>EM 保证的是在相应更新条件下<strong>目标值不下降</strong>。若目标还有有限上界，单调目标值序列会收敛；这不自动保证参数序列收敛到唯一点、有限步结束或找到全局最大值。潜变量模型可能有多个局部解、参数不可辨识和标签交换；高斯混合最大似然还可能沿协方差塌缩方向无界增大。</p>
+<p>在适当可微、内点与固定支持域等条件下，下界在旧参数处还与似然具有相同梯度：KL 在该点为零的极小值，其参数一阶导为零。这解释了切触关系。书页 453 的“convex”已由<a href="https://www.microsoft.com/en-us/research/wp-content/uploads/2016/05/prml-errata-3rd-20110921.pdf#page=6">官方勘误，第 6 页</a>改为“concave”。但一般 EM 的下界不保证对任意参数化的 \(\theta\) 都凹或有唯一最大值；指数族在合适自然参数与约束下可有凹的 M 步目标，严格凹性与解的存在性仍须检查。</p>
+
+<h3>8. 独立样本为何能逐个计算责任度？</h3>
+<p>若完整联合分布逐样本分解，\(p(X,Z\mid\theta)=\prod_np(x_n,z_n\mid\theta)\)，则：</p>
+\[
+p(Z\mid X,\theta)
+=\frac{\prod_np(x_n,z_n\mid\theta)}{\prod_np(x_n\mid\theta)}
+=\prod_np(z_n\mid x_n,\theta).
+\]
+<p class="source">原书公式 (9.75)，书页 453。</p>
+<p>给定当前参数后，一个样本的责任度只需要它自己的观测。其他样本仍通过共同训练的 \(\theta\) 间接影响它。这里的分解来自模型的条件独立结构，是精确结果，不是人为把有依赖的后验强行拆开的近似。</p>
+
+<h2 id="em-variants">EM 的推广：哪些保证保留，哪些需要重新说明？</h2>
+<p class="source">原书书页 454–455：MAP EM、GEM、ECM 与 incremental EM。始终用“实际增加哪个目标”区分它们。</p>
+
+<h3>1. MAP EM：E 步形式不变，M 步加上参数先验</h3>
+<p>给参数加先验 \(p(\theta)\)，目标变为参数后验：</p>
+\[
+\log p(\theta\mid X)
+=\ell(\theta)+\log p(\theta)-\log p(X)
+\ge\mathcal L(q,\theta)+\log p(\theta)-\log p(X).
+\]
+<p class="source">原书公式 (9.76)、(9.77)，书页 454。这里 \(p(X)\) 是按先验对参数积分后的证据，对 \(\theta\) 是常数；它不同于 \(p(X\mid\theta)\)。</p>
+<p>固定参数时先验项不依赖 \(q\)，E 步仍取 \(q(Z)=p(Z\mid X,\theta^{old})\)。M 步变为：</p>
+\[
+\theta^{new}\in\operatorname*{arg\,max}_{\theta}
+\{Q(\theta,\theta^{old})+\log p(\theta)\}.
+\]
+<p>此时单调保证针对<strong>对数参数后验</strong>。观测似然本身可以下降，以换取更高的先验概率。MAP 仍是参数点估计，不等于对全部参数不确定性做完整贝叶斯推断。</p>
+
+<h3>2. GEM：M 步不必找到最大值，但要确认它有所改进</h3>
+<p>广义 EM 保留精确 E 步，将 M 步放宽为寻找满足 \(Q(\theta^{new},\theta^{old})\ge Q(\theta^{old},\theta^{old})\) 的参数。熵固定，因此仍有前面的单调不等式链。</p>
+<p>例如可以数值优化若干步并确认目标增加。任意梯度步长都不自动合格：步子过大可能使 \(Q\) 下降，需要合适步长或其他保证改进的策略。放宽的是“最大化到顶”，并没有放宽成“随便更新一下”。</p>
+
+<h3>3. ECM：固定本轮 q，把参数分块优化</h3>
+<p>将参数拆成 \(\theta=(\theta_1,\ldots,\theta_B)\)。固定 E 步的 \(q\)，先在其他块固定时优化 \(\theta_1\)，再使用最新的 \(\theta_1\) 优化 \(\theta_2\)，依次进行。每次条件最大化都在合法参数域内使同一个下界不下降，整个 M 阶段便构成一次 GEM 更新。</p>
+<p>这里在一轮 M 步内部固定潜变量分布；“每更新一个参数块就重新计算全部责任度”属于另一种更新安排。各块单独容易优化，往往是采用 ECM 的原因。</p>
+
+<h3>4. 增量 EM：一次刷新一个样本，单调增加的是 L</h3>
+<p>对逐样本独立模型，维护 \(q(Z)=\prod_nq_n(z_n)\)，下界为：</p>
+\[
+\mathcal L(q,\theta)=\sum_n\left\{
+\mathbb E_{q_n}[\log p(x_n,z_n\mid\theta)]+H(q_n)\right\}.
+\]
+<p>批量 E 步一次更新所有 \(q_n\)。增量方法只选样本 \(m\)，令 \(q_m=p(z_m\mid x_m,\theta)\)，其他分布暂时保留旧值。这个坐标更新改进下界，却通常没有消除全部后验 KL：其他样本的责任度可能仍然过时。随后利用维护的统计量更新参数，继续改进下界。</p>
+<p>高斯混合中，记 \(\delta_k=\gamma^{new}_{mk}-\gamma^{old}_{mk}\)，维护 \(N_k=\sum_n\gamma_{nk}\) 和 \(S_k=\sum_n\gamma_{nk}x_n\)，只需：</p>
+\[
+N_k^{new}=N_k^{old}+\delta_k,\qquad
+S_k^{new}=S_k^{old}+\delta_kx_m.
+\]
+<p>利用 \(S_k^{old}=N_k^{old}\mu_k^{old}\)，当 \(N_k^{new}&gt;0\) 时：</p>
+\[
+\begin{aligned}
+\mu_k^{new}
+&=\frac{N_k^{old}\mu_k^{old}+\delta_kx_m}{N_k^{new}}\\
+&=\mu_k^{old}+\frac{\delta_k}{N_k^{new}}(x_m-\mu_k^{old}).
+\end{aligned}
+\]
+<p class="source">原书公式 (9.78)、(9.79)，书页 455。协方差可类似地维护加权二阶统计量。</p>
+<p>固定分量数与数据维数后，每次更新不必重新扫描全部 \(N\) 个样本，所以这次更新的运算量可以不随 \(N\) 增长。这不保证总训练成本与 \(N\) 无关，也不保证存储旧责任度不耗内存。增量方法保留了其他样本的统计贡献，并不是每次只用当前一个样本重新拟合。</p>
+<aside class="note"><strong>不能原封不动套用批量 EM 的似然保证。</strong>增量 E 子步固定参数，观测似然不变；随后的 M 子步从可能仍松的下界出发。一般有 \(\Delta\ell=\Delta\mathcal L+\Delta\mathrm{KL}\)，后者符号未定，故不能仅由下界增加推出每个增量周期的似然增加。原书直接保证各 E/M 坐标更新改进 \(\mathcal L\)。当 \(q\) 可自由变化且满足相应正则条件时，若算法收敛到这个联合目标的局部或全局极大点，才可建立与似然极大点的对应；这不保证收敛必定发生。</aside>
+
+<h3>5. 与第 10 章变分法的连接</h3>
+<p>恒等式不要求后验容易计算，困难在于精确 E 步可能不可行。若把 \(q\) 限制在便于计算的分布族，再优化下界，最优 \(q\) 可能无法等于真实后验，间隙也不会完全关闭。这通向变分推断。</p>
+<p>此时坐标更新通常保证相应 ELBO 改进，不能直接援引标准 EM 的“每轮贴紧旧似然”证明。增量 EM 暂时只更新部分分布坐标，变分近似还可能永久限制分布的表达能力；不能仅凭“E 步不完整”就混为一种算法。</p>
+
+<h3>6. 把容易混淆的保证放在一起</h3>
+<table>
+<thead><tr><th>做法或说法</th><th>准确理解</th></tr></thead>
+<tbody>
+<tr><td>标准 EM 的 E 步</td><td>固定参数，使 q 等于当前后验；下界贴紧，似然不变。</td></tr>
+<tr><td>标准 EM / GEM 的 M 步</td><td>固定刚得到的后验，最大化或改进下界；完整周期的观测似然不下降。</td></tr>
+<tr><td>M 步后 KL 又变大</td><td>通常是参数改变使旧后验不再匹配，不代表优化失败。</td></tr>
+<tr><td>增量 EM 的部分刷新</td><td>一般只保证下界改进，不能要求每次参数更新都提高观测似然。</td></tr>
+<tr><td>MAP EM</td><td>加入先验后保证后验目标，仍是参数点估计。</td></tr>
+<tr><td>目标值单调</td><td>不是全局最优、唯一参数解或有限步收敛的证明。</td></tr>
+</tbody>
+</table>
+
+<h3>7. 六道原创自测：先回答，再展开</h3>
+<details><summary>① E 步把下界从 −120 提高到 −105，参数没变。能说似然提高了 15 吗？</summary><p>不能。似然只依赖固定参数，保持不变。变化的是 KL 间隙；若是精确 E 步，当前对数似然就是 −105。</p></details>
+<details><summary>② 旧对数似然为 −100，精确 E 步后，M 步把下界提高到 −97。新对数似然能是 −98 吗？</summary><p>不能。它必须至少等于新下界 −97。否则计算、下界定义或更新条件至少有一项不一致。</p></details>
+<details><summary>③ M 步中，Q 的后验权重是否应随待优化参数一起变化？</summary><p>不应。M 步固定旧后验；让权重一起变化就换了目标，无法继续使用固定熵的推导。重新计算后验属于下一次 E 步。</p></details>
+<details><summary>④ 某增量更新让下界增加 2，KL 减少 3。恒等式允许对数似然怎样变化？</summary><p>减少 1，因为 \(\Delta\ell=2-3=-1\)。仅看松下界的增量不能判断似然增量。这里是恒等式中的教学数值。</p></details>
+<details><summary>⑤ MAP 更新让似然下降、先验概率上升，一定是算法错了吗？</summary><p>不一定。应检查 \(\log p(X\mid\theta)+\log p(\theta)\) 的总变化。MAP 可以用部分数据拟合程度交换更受先验支持的参数。</p></details>
+<details><summary>⑥ 似然连续 100 轮提高，证明最终能找到有限的全局最优参数了吗？</summary><p>没有。目标可能无界；即使有界，也只直接保证单调目标值收敛。参数收敛、最优点性质与全局性需要额外条件。</p></details>
+
+<p class="takeaway"><strong>本节核心：</strong>精确 E 步用后验让下界在旧参数处贴紧；M 步固定这份后验改进下界，便得到观测似然不下降的证明。阅读推广方法时，先检查“下界还紧不紧、固定了什么、实际增加哪个目标”，再判断它继承哪些保证。</p>

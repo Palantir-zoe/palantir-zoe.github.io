@@ -1,0 +1,37 @@
+<div class="review-banner"><span>审阅稿 v1</span><p>基于 Christopher M. Bishop《Pattern Recognition and Machine Learning》第 9 章，按“问题 → 模型 → 推导 → 算法 → 例子 → 讨论”组织。整理日期：2026-10-20。</p></div>
+<p class="lead">当一堆数据来自几个不同群体，但每个样本的群体标签没有被记录下来，我们该怎样同时估计“它属于谁”和“每个群体长什么样”？这就是混合模型与 EM 要解决的一类问题。</p>
+<div class="note-focus"><strong>本章一句话：</strong>先用当前模型计算隐变量的后验分布，再在这个分布给出的权重下优化参数。EM 的依据是一个可变紧的似然下界，而不是“猜标签再算平均”这一经验口诀。</div>
+
+<h2 id="reading-map">导读：从聚类问题读到一般隐变量学习</h2>
+<h3>摘要</h3>
+<p>本章把三件常被混在一起的事连起来：<strong>聚类</strong>是从无标签样本中寻找分组；<strong>混合模型</strong>用多个简单分布组成一个更灵活的概率分布；<strong>EM</strong>则是估计带隐变量模型参数的一类优化方法。K-means 提供交替更新的直觉，高斯混合给出软分配的概率含义，一般 EM 的下界推导解释为什么这种更新能改善目标。Bernoulli 混合和贝叶斯线性回归说明，它并不局限于高斯聚类。</p>
+<p>把这章当作研究笔记来读，最重要的问题是：<em>隐藏了什么？要优化什么？为什么直接优化困难？E 步与 M 步分别固定什么？更新保证的究竟是什么？</em>下面保留关键推导的中间步骤，同时把书中结论、补充解释、自拟数据例子分开标注。</p>
+<div class="table-scroll"><table><thead><tr><th>原书部分</th><th>印刷页</th><th>核心问题</th><th>读后应能解释</th></tr></thead><tbody>
+<tr><td>9.1 K-means</td><td>424–430</td><td>怎样交替改善分组和中心？</td><td>目标函数、硬分配、均值更新、图像量化</td></tr>
+<tr><td>9.2 高斯混合</td><td>430–439</td><td>怎样让一个样本以不同概率属于多个分量？</td><td>混合权重、责任度、似然、三组 EM 更新</td></tr>
+<tr><td>9.3 隐变量视角</td><td>439–450</td><td>为什么要对完整数据的对数似然取期望？</td><td>Q 函数、K-means 极限、Bernoulli、贝叶斯回归</td></tr>
+<tr><td>9.4 一般 EM</td><td>450–455</td><td>两步更新为什么成立，能怎样推广？</td><td>下界/KL 分解、单调性、GEM、ECM、增量 EM</td></tr>
+</tbody></table></div>
+<p class="source-note">正文主要对应原书印刷页 423–455。工作区 PDF 的页序比印刷页大 20，例如印刷页 450 对应 PDF 第 470 页。公式编号按 PRML 原书保留；本笔记中的新例子与图示不使用原书图号。作者的<a href="https://www.microsoft.com/en-us/research/people/cmbishop/prml-book/" target="_blank" rel="noopener">官方书籍页面</a>提供目录、配套材料及不同印次的勘误。</p>
+
+<h3>先读懂问题：两个群体的数值重叠了</h3>
+<p>假设一批测量值来自两台设备，但设备编号丢失了。一台设备的测量值大多在较小的位置，另一台大多在较大的位置，两个范围又有重叠。单个高斯只能用一组均值和方差概括所有测量；两个高斯的混合可以分别描述两种测量模式。</p>
+<p>生成一个数据点的过程可以是：先以概率 \(\pi_1,\pi_2\) 选择设备，再从该设备的高斯分布抽一个值。选择结果 \(z\) 没有被观察到，所以数据只显示 \(x\)。<strong>隐变量不是模型后来凭空“补出的真实标签”，而是用来描述生成机制、并需要推断的随机变量。</strong></p>
+<div class="flow-cards"><div><b>已观察 X</b><span>测量结果、图像像素、回归目标</span></div><div><b>未观察 Z</b><span>哪个分量生成样本；或潜在回归权重</span></div><div><b>要学习 θ</b><span>分量参数与混合比例；或模型超参数</span></div></div>
+<p>设备只是教学比喻。统计分量不必一一对应现实中的人群类别，也不保证与语义标签相同。一个真实类别可能需要多个分量描述，多个真实类别也可能在观测特征上无法区分。</p>
+
+<h3>符号表：整篇会反复使用</h3>
+<div class="table-scroll"><table><thead><tr><th>符号</th><th>含义</th><th>典型形状或约束</th></tr></thead><tbody>
+<tr><td>\(x_n,X\)</td><td>第 n 个观测向量、全部数据</td><td>\(x_n\in\mathbb R^D\)，\(X\) 为 \(N\times D\)</td></tr>
+<tr><td>\(K\)</td><td>混合分量个数</td><td>本章核心算法通常预先指定</td></tr>
+<tr><td>\(\pi_k\)</td><td>选择第 k 个分量的先验概率</td><td>非负，\(\sum_k\pi_k=1\)</td></tr>
+<tr><td>\(z_{nk}\)</td><td>样本 n 是否由分量 k 生成的指示变量</td><td>0 或 1；每个样本恰有一个 1</td></tr>
+<tr><td>\(r_{nk}\)</td><td>K-means 的硬分配</td><td>0 或 1</td></tr>
+<tr><td>\(\gamma_{nk}\)</td><td>责任度，书中也写 \(\gamma(z_{nk})\)</td><td>\(p(z_{nk}=1\mid x_n,\theta)\)，一行和为 1</td></tr>
+<tr><td>\(N_k\)</td><td>分量 k 的有效样本量</td><td>\(\sum_n\gamma_{nk}\)，通常可为非整数</td></tr>
+<tr><td>\(\mu_k,\Sigma_k\)</td><td>高斯分量的均值与协方差</td><td>\(D\) 维、\(D\times D\) 正定矩阵</td></tr>
+<tr><td>\(\ell(\theta)\)</td><td>观测数据对数似然</td><td>\(\log p(X\mid\theta)\)</td></tr>
+<tr><td>\(Q(\theta,\theta^{old})\)</td><td>旧后验下的完整数据对数似然期望</td><td>被优化的是第一个参数位置</td></tr>
+<tr><td>\(q(Z),\mathcal L(q,\theta)\)</td><td>隐变量分布、似然下界</td><td>E 步调整 q；M 步固定 q 调整 θ</td></tr>
+</tbody></table></div>
+<p>本篇中的 \(\log\) 默认是自然对数，压缩比特数使用 \(\log_2\)。高斯公式中的 \(\pi\) 是圆周率，带下标的 \(\pi_k\) 才是混合权重。K-means 的硬指示 \(r\)、概率后验 \(\gamma\) 与隐变量取值 \(z\) 也应区分。</p>

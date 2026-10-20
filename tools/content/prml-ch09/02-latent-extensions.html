@@ -1,0 +1,288 @@
+<section>
+  <p class="section-kicker">PRML §9.3、§9.3.1 · 印刷页 439—443</p>
+  <h2 id="latent-view">从隐变量理解 EM：先算“未知部分的分布”，再优化参数</h2>
+
+  <h3>1. “完整数据”不一定意味着补齐缺失的表格单元</h3>
+  <p>在高斯混合模型里，我们看到了每个点的位置，却没看到“这个点由哪个分量生成”。用 \(X\) 表示观测，用 \(Z\) 表示这些未知的来源标签，\(\theta\) 表示均值、协方差与混合系数等参数。书中把 \((X,Z)\) 称为<strong>完整数据</strong>，把实际拿到的 \(X\) 称为<strong>不完整数据</strong>。这里的“不完整”是相对于模型的生成过程而言；数据文件本身可以一个空值都没有。</p>
+  <p>学习目标仍然是让已经看到的数据更可能出现。由于没有观察到 \(Z\)，必须把所有可能的隐变量取值加起来，得到观测数据的对数似然：</p>
+  \[
+  \ell(\theta)=\log p(X\mid\theta)
+  =\log\sum_Zp(X,Z\mid\theta).
+  \]
+  <p class="source-note">对应式 (9.29)，印刷页 439。连续隐变量时，把求和换成积分即可。</p>
+  <p>困难来自“先求和、再取对数”：对数不能把和拆开。如果 \(Z\) 已知，优化的就是 \(\log p(X,Z\mid\theta)\)，很多模型便能化成容易处理的加法形式。EM 正是利用这种结构差异。它需要完整数据问题比原问题更好处理；引入一个隐变量，并不自动保证计算会变简单。</p>
+
+  <h3>2. Q 函数里的两套参数，各自负责什么？</h3>
+  <p>设当前参数为 \(\theta^{old}\)。先用它回答：“在已看到 \(X\) 的条件下，各种 \(Z\) 有多大可能？”这个后验分布决定本轮使用的权重。接着，考虑不同候选参数 \(\theta\) 对完整数据的解释能力，得到：</p>
+  \[
+  Q(\theta,\theta^{old})
+  =\mathbb E_{p(Z\mid X,\theta^{old})}
+     [\log p(X,Z\mid\theta)]
+  =\sum_Zp(Z\mid X,\theta^{old})\log p(X,Z\mid\theta).
+  \]
+  <div class="table-wrap"><table>
+    <thead><tr><th>位置</th><th>用哪套参数</th><th>本轮负责的工作</th></tr></thead>
+    <tbody>
+      <tr><td>后验 \(p(Z\mid X,\theta^{old})\)</td><td>旧参数，固定</td><td>给各个隐变量解释分配权重</td></tr>
+      <tr><td>联合分布 \(p(X,Z\mid\theta)\)</td><td>候选新参数，可改变</td><td>衡量各个完整数据解释的对数概率</td></tr>
+      <tr><td>\(\theta^{new}=\arg\max_\theta Q(\theta,\theta^{old})\)</td><td>优化结果</td><td>在既定权重下选择更好的参数</td></tr>
+    </tbody>
+  </table></div>
+  <p class="source-note">对应式 (9.30)—(9.34)，印刷页 440—441。</p>
+  <p>因此，一轮 EM 的顺序是：<strong>E 步计算旧参数下的后验；M 步保持这个后验不动，优化 Q；完成后再把新参数变成下一轮的旧参数。</strong>如果每改一下候选参数就立刻重新计算后验，你优化的便不是这一轮固定的 Q。旧参数和新参数在公式中同时出现，是算法交替进行的关键。</p>
+
+  <h3>3. 期望的是“完整数据的对数概率”，不是给隐变量填一个均值</h3>
+  <p>Q 的定义中，期望作用在 \(\log p(X,Z\mid\theta)\) 上。一般而言，\(\mathbb E[f(Z)]\ne f(\mathbb E[Z])\)。例如隐变量以相同概率取 \(-1\) 和 \(1\)，那么 \(\mathbb E[Z]=0\)，但 \(\mathbb E[Z^2]=1\)，而把均值直接代入平方只能得到 0。对于任意具有有限方差的标量隐变量：</p>
+  \[
+  \mathbb E[(a-Z)^2]
+  =(a-\mathbb E[Z])^2+\operatorname{Var}(Z).
+  \]
+  <p>后面的贝叶斯回归正需要第二项。忽略它，相当于把对权重的不确定性抹掉。EM 也不是先计算 \(\mathbb E[p(X,Z\mid\theta)]\) 再取对数：这两种顺序通常给出不同目标。<span class="source-note">本段为式 (9.30) 的数学教学补充。</span></p>
+
+  <h3>4. 为什么高斯混合里，却能把标签换成责任度？</h3>
+  <p>令 \(z_{nk}\) 是 one-hot 标签：若第 \(n\) 个点来自第 \(k\) 个分量则为 1，否则为 0。完整数据的联合分布与对数概率为：</p>
+  \[
+  p(X,Z\mid\theta)
+  =\prod_{n=1}^N\prod_{k=1}^K
+    [\pi_k\mathcal N(x_n\mid\mu_k,\Sigma_k)]^{z_{nk}},
+  \]
+  \[
+  \log p(X,Z\mid\theta)
+  =\sum_{n=1}^N\sum_{k=1}^Kz_{nk}
+    [\log\pi_k+\log\mathcal N(x_n\mid\mu_k,\Sigma_k)].
+  \]
+  <p class="source-note">式 (9.35)、(9.36)，印刷页 442。</p>
+  <p>关键是最后一式<strong>对每个 \(z_{nk}\) 都是线性的</strong>，所以计算期望只需把它换成 \(\mathbb E[z_{nk}]=\gamma_{nk}\)。这是当前模型的特殊结构，不是“所有 EM 都给隐变量填均值”的一般规则。责任度来自旧参数下的贝叶斯公式：</p>
+  \[
+  \gamma_{nk}
+  =\frac{\pi_k^{old}\mathcal N(x_n\mid\mu_k^{old},\Sigma_k^{old})}
+  {\sum_j\pi_j^{old}\mathcal N(x_n\mid\mu_j^{old},\Sigma_j^{old})}.
+  \]
+  \[
+  Q=\sum_{n,k}\gamma_{nk}
+    [\log\pi_k+\log\mathcal N(x_n\mid\mu_k,\Sigma_k)].
+  \]
+  <p class="source-note">式 (9.38)—(9.40)，印刷页 443。</p>
+  <p>当来源标签真的已知时，一个点完整计入一个分量；标签未知时，同一个点按责任度分摊给各个分量。令 \(N_k=\sum_n\gamma_{nk}\)，M 步就恢复前面推导的加权均值、加权协方差和有效人数比例：</p>
+  \[
+  \mu_k^{new}=\frac{\sum_n\gamma_{nk}x_n}{N_k},\qquad
+  \Sigma_k^{new}=\frac{\sum_n\gamma_{nk}(x_n-\mu_k^{new})(x_n-\mu_k^{new})^T}{N_k},
+  \qquad \pi_k^{new}=\frac{N_k}{N}.
+  \]
+  <p>这就把 §9.2 中看起来像“交替代公式”的算法，统一为一次后验推断和一次完整数据参数估计。若在 \(\theta\) 上另加先验做 MAP，E 步仍计算给定当前参数的后验，M 步改为最大化 \(Q+\log p(\theta)\)。精确 EM 的似然不下降性质将在 §9.4 解释；它不提供全局最优保证，也不会自动消除 GMM 的协方差塌缩问题。<span class="source-note">参见印刷页 441 的 MAP 讨论及 §9.4。</span></p>
+  <p>计算时通常不必枚举整个 \(Z\) 的所有组合：给定 GMM 参数与观测后，不同样本的隐标签后验分解，E 步只需分别计算每行责任度。M 步进一步只需要有效人数、加权一阶矩与加权二阶矩。这说明 EM 传递的是优化所需的后验统计量，不一定是把整张概率分布逐项保存。不过更复杂模型的后验可能不再容易计算，这时精确 E 步本身就会成为困难。</p>
+  <p>书中也把 EM 用于真正的数据缺失：把缺失值当作隐变量，积分掉后优化已观察部分的似然。但这种做法需要合适的缺失机制条件。例如某传感器一旦测量值超过阈值就不返回结果，缺失本身已包含关于未观测值的信息；若忽略这个机制，单纯“用 EM 补值”可能得到有偏解释。<span class="source-note">印刷页 441 的缺失数据讨论；这里概括其适用条件，不把任意缺失都视为可忽略。</span></p>
+</section>
+
+<section>
+  <p class="section-kicker">PRML §9.3.2 · 印刷页 443—444</p>
+  <h2 id="kmeans-limit">K-means 是怎样从一种受限 GMM 中出现的？</h2>
+
+  <h3>1. 先把极限成立的条件列清楚</h3>
+  <p>令所有分量共享<strong>球形协方差</strong> \(\Sigma_k=\varepsilon I\)。在一次 EM 优化中，把 \(\varepsilon&gt;0\) 视为固定常数，不重新估计它；然后研究这类模型在 \(\varepsilon\to0\) 时的行为。还需考虑正的混合权重，并先假设一个点有唯一最近的中心。自由学习任意协方差的一般 GMM，并不满足这些限制。</p>
+  \[
+  \mathcal N(x_n\mid\mu_k,\varepsilon I)
+  =(2\pi\varepsilon)^{-D/2}
+  \exp\left[-\frac{\|x_n-\mu_k\|^2}{2\varepsilon}\right].
+  \]
+  <p>在责任度分子和分母中，共同的归一化因子消掉，留下：</p>
+  \[
+  \gamma_{nk}
+  =\frac{\pi_k\exp[-\|x_n-\mu_k\|^2/(2\varepsilon)]}
+  {\sum_j\pi_j\exp[-\|x_n-\mu_j\|^2/(2\varepsilon)]}.
+  \]
+  <p class="source-note">对应式 (9.41)、(9.42)。这里明确写出 D 维高斯的归一化常数，便于与维度核对。</p>
+
+  <h3>2. 小方差使距离差被指数放大</h3>
+  <p>设 \(k_*\) 是唯一最近的中心。比较另一个中心 \(j\) 与它的责任度之比：</p>
+  \[
+  \frac{\gamma_{nj}}{\gamma_{nk_*}}
+  =\frac{\pi_j}{\pi_{k_*}}
+  \exp\left[-\frac{\|x_n-\mu_j\|^2-\|x_n-\mu_{k_*}\|^2}{2\varepsilon}\right].
+  \]
+  <p>分子里的距离差严格为正；在固定正权重下，\(\varepsilon\) 越小，这个比值越接近 0。因此最近中心的责任度趋于 1，其余趋于 0，软分配变为硬分配。若两个最近中心距离相同，极限会在并列者之间按权重分配，不能直接声称唯一标签自动出现；K-means 需要另定并列处理规则。</p>
+  <p>教学例子：两中心的距离平方分别为 1 和 4，混合权重相同。最近中心的责任度为 \(1/(1+e^{-3/(2\varepsilon)})\)。当 \(\varepsilon=1\) 时约为 0.818；当 \(\varepsilon=0.1\) 时约为 0.9999997。小方差控制的是分配的尖锐程度，不是把输入坐标直接缩小。随后，加权中心更新就变成簇内样本的普通平均。<span class="source-note">本例与责任度比值为式 (9.42) 的教学推导。</span></p>
+
+  <h3>3. 优化目标怎样变成平方距离和？</h3>
+  <p>保留尺度因子后，固定方差模型的 Q 为：</p>
+  \[
+  Q=C(\varepsilon)+\sum_{n,k}\gamma_{nk}\log\pi_k
+  -\frac{1}{2\varepsilon}\sum_{n,k}\gamma_{nk}\|x_n-\mu_k\|^2,
+  \qquad C(\varepsilon)=-\frac{ND}{2}\log(2\pi\varepsilon).
+  \]
+  <p>在 M 步优化中心时，前两项与中心无关。随着责任度变成 \(r_{nk}\in\{0,1\}\)，最大化 Q 等价于最小化：</p>
+  \[
+  J=\sum_{n,k}r_{nk}\|x_n-\mu_k\|^2.
+  \]
+  <p>这就是 K-means 的失真目标。理解书中式 (9.43) 时，要注意其强调的是<strong>优化目标的等价性</strong>：原始 Q 的距离项含 \(1/\varepsilon\)，不具有这里直接写出的有限极限。可以先减去与参数无关的项，再乘正数 \(\varepsilon\)，得到与 \(-J/2\) 对应的缩放目标。混合系数仍可更新为簇的样本比例，但在这个唯一最近中心的小方差极限中不再改变分配。<span class="source-note">对应印刷页 444；尺度说明为数学澄清。</span></p>
+  <p>所以准确关系是：<strong>K-means 对应共享固定球形协方差 GMM 的小方差极限。</strong>有限方差时仍是软分配；协方差不同会产生不同的距离度量与密度惩罚；空簇还会让均值公式分母为零，需要实现时另行处理。这些情况不能用一句“GMM 就是 K-means”概括。</p>
+  <details><summary>对照原书时的两个小提醒</summary>
+    <p>本份书的式 (9.41) 把 D 维高斯归一化因子的指数印成 1/2；<a href="https://www.microsoft.com/en-us/research/wp-content/uploads/2016/05/prml-errata-1st-20110921.pdf#page=19">作者官方勘误</a>明确修正为 D/2。式 (9.43) 的优化关系则按上文保留方差尺度后理解：先对目标作正比例缩放，再讨论小方差极限。两点均不改变本节得到 K-means 的主要结论。</p>
+  </details>
+</section>
+
+<section>
+  <p class="section-kicker">PRML §9.3.3 · 印刷页 444—448</p>
+  <h2 id="bernoulli-mixtures">伯努利混合：每类内部独立，为什么合起来可以相关？</h2>
+
+  <h3>1. 让连续坐标换成二值特征</h3>
+  <p>现在每个样本是 \(D\) 维二值向量：\(x_i\in\{0,1\}\)。例如把图像像素分成黑、白，或者用多个“是否出现”的特征表示对象。一个独立伯努利乘积模型写作：</p>
+  \[
+  p(x\mid\mu)=\prod_{i=1}^D\mu_i^{x_i}(1-\mu_i)^{1-x_i},
+  \qquad 0\le\mu_i\le1.
+  \]
+  <p>\(\mu_i\) 是第 \(i\) 个特征为 1 的概率。这个模型假设各维度独立，其均值为 \(\mu\)，协方差为 \(\operatorname{diag}\{\mu_i(1-\mu_i)\}\)。它可以学会哪些像素经常亮，却无法表示两个像素经常一起亮这一额外关系。<span class="source-note">式 (9.44)—(9.46)，印刷页 445。</span></p>
+  <p>引入类别 \(z\)，每类使用自己的像素概率模板 \(\mu_k\)：</p>
+  \[
+  p(x)=\sum_{k=1}^K\pi_k
+  \prod_{i=1}^D\mu_{ki}^{x_i}(1-\mu_{ki})^{1-x_i}.
+  \]
+  <p><strong>独立性现在成立于“给定类别”的条件下。</strong>不知道类别时，各维度通过共同的类别发生统计联系。每个 \(\mu_k\) 是一个二值图案的概率模板；它不是类别概率向量，不需要满足 \(\sum_i\mu_{ki}=1\)。要和为 1 的是混合权重 \(\sum_k\pi_k=1\)。<span class="source-note">式 (9.47)、(9.48)；参数约束由式 (9.44) 的伯努利定义决定。</span></p>
+
+  <h3>2. 一个两像素例子，直接看见相关性</h3>
+  <p>设两类各占一半，第一类的参数为 \((0.9,0.9)\)，第二类为 \((0.1,0.1)\)。在任意一类内部，两像素仍独立。但合起来：</p>
+  \[
+  P(x_1=1)=P(x_2=1)=0.5,\qquad
+  P(x_1=1,x_2=1)=\tfrac12(0.9^2)+\tfrac12(0.1^2)=0.41.
+  \]
+  <p>若总体独立，联合概率应为 \(0.5\times0.5=0.25\)，实际却是 0.41，协方差为 \(0.41-0.25=0.16\)。观察到一个像素亮，会提高“样本来自亮模板”的可能性，进而提高另一个像素也亮的概率。这是共同隐变量产生相关性的具体机制。<span class="source-note">自设教学例子，对应式 (9.49)、(9.50)。</span></p>
+  <p>更一般地，记总体均值为 \(\bar\mu=\sum_k\pi_k\mu_k\)，全协方差公式给出：</p>
+  \[
+  \operatorname{Cov}(x)
+  =\underbrace{\sum_k\pi_k\operatorname{diag}\{\mu_{ki}(1-\mu_{ki})\}}_{\text{类内变异}}
+  +\underbrace{\sum_k\pi_k(\mu_k-\bar\mu)(\mu_k-\bar\mu)^T}_{\text{类别均值不同造成的变异}}.
+  \]
+  <p>第一项是对角矩阵，第二项通常不是。相关性因此可以由类别之间的均值差异产生，而不需要每个分量自己带一个非对角协方差矩阵。</p>
+
+  <h3>3. E 步：计算样本属于哪个二值模板的概率</h3>
+  <p>仍使用 one-hot 隐标签。完整数据对数概率对 \(z_{nk}\) 线性，取后验期望后得到：</p>
+  \[
+  Q=\sum_{n,k}\gamma_{nk}\left[
+  \log\pi_k+\sum_i\{x_{ni}\log\mu_{ki}+(1-x_{ni})\log(1-\mu_{ki})\}\right].
+  \]
+  \[
+  \gamma_{nk}
+  =\frac{\pi_k^{old}\prod_i(\mu_{ki}^{old})^{x_{ni}}(1-\mu_{ki}^{old})^{1-x_{ni}}}
+  {\sum_j\pi_j^{old}\prod_i(\mu_{ji}^{old})^{x_{ni}}(1-\mu_{ji}^{old})^{1-x_{ni}}}.
+  \]
+  <p>一个模板不仅要解释亮像素，也要解释暗像素；乘积里同时存在 \(\mu_{ki}\) 和 \(1-\mu_{ki}\)。在高维二值图像中，直接连乘会产生非常小的数，实践中应先计算对数分数，再用 log-sum-exp 归一化。<span class="source-note">式 (9.52)—(9.56)，印刷页 446；数值实现为教学补充。</span></p>
+
+  <h3>4. M 步：每个像素做一次带权“亮像素计数”</h3>
+  <p>令 \(A_{ki}=\sum_n\gamma_{nk}x_{ni}\)，表示第 \(k\) 类在第 \(i\) 个像素上的有效亮次数；令 \(N_k=\sum_n\gamma_{nk}\)。Q 中与该像素参数有关的部分就是 \(A_{ki}\log\mu_{ki}+(N_k-A_{ki})\log(1-\mu_{ki})\)。求导并令其为零：</p>
+  \[
+  \frac{A_{ki}}{\mu_{ki}}-\frac{N_k-A_{ki}}{1-\mu_{ki}}=0
+  \quad\Longrightarrow\quad
+  \mu_{ki}^{new}=\frac{A_{ki}}{N_k},\qquad
+  \pi_k^{new}=\frac{N_k}{N}.
+  \]
+  <p>因此，每个模板都是按责任度加权的图像平均。比如某像素得到有效亮次数 7、有效样本数 10，就更新成亮概率 0.7，而不是立刻二值化为 1。分母为零的空分量需要另行处理；为了避免一开始给某些样本零概率，通常从 \(0&lt;\mu_{ki}&lt;1\) 的内部值初始化。<span class="source-note">式 (9.57)—(9.60)，印刷页 447；数值例子为教学补充。</span></p>
+  <p>图 9.10 使用 600 张数字 2、3、4 的图像，阈值 0.5 二值化，拟合 3 个伯努利分量并运行 10 轮 EM。单一模型只能得到所有数字叠加的平均模板，混合模型则能形成三个不同模板。这不是预先告诉算法数字标签，而是利用混合结构解释数据中的不同模式。<span class="source-note">印刷页 447—448，图 9.10。</span></p>
+  <p>这里的概率质量始终不超过 1，所以不存在 GMM 那种把连续密度推到无穷大的协方差塌缩。但边界参数仍可能让某些样本概率为零，局部解与初始化敏感性也依旧存在。书中还指出可以加入 Beta 先验平滑伯努利参数，或扩展到更多离散状态；“不会无限大”不等于所有优化问题都消失。<span class="source-note">印刷页 447—448。</span></p>
+</section>
+
+<section>
+  <p class="section-kicker">PRML §9.3.4 · 印刷页 448—450</p>
+  <h2 id="bayesian-regression">贝叶斯线性回归：EM 还能学习先验强度和噪声大小</h2>
+
+  <h3>1. 本次隐变量是权重，待估参数是两个超参数</h3>
+  <p>前两例的隐变量是“每个样本来自哪一类”。这一例换一个角色分工：观测量为目标向量 \(t\)，设计矩阵 \(\Phi\in\mathbb R^{N\times M}\) 已知；权重 \(w\in\mathbb R^M\) 作为一个共享的连续隐变量；待估的是先验精度 \(\alpha\) 和噪声精度 \(\beta\)。模型为：</p>
+  \[
+  p(w\mid\alpha)=\mathcal N(w\mid0,\alpha^{-1}I),\qquad
+  p(t\mid w,\beta)=\mathcal N(t\mid\Phi w,\beta^{-1}I).
+  \]
+  <p>精度是方差的倒数：\(\alpha\) 大，先验更强地收缩权重；\(\beta\) 大，观测噪声更小。目标是最大化把权重积分掉后的证据：</p>
+  \[
+  p(t\mid\alpha,\beta)=\int p(t\mid w,\beta)p(w\mid\alpha)\,dw.
+  \]
+  <p>这属于证据近似或经验贝叶斯：对 \(w\) 保留后验分布，对 \(\alpha,\beta\) 选取点估计。它没有进一步给超参数指定先验并求完整后验，也没有把 \(w\) 与两个精度一起做普通最大似然拟合。<span class="source-note">§9.3.4 引言，印刷页 448；联系第 3 章式 (3.49)、(3.52)、(3.77)。</span></p>
+
+  <h3>2. E 步：计算权重的高斯后验</h3>
+  <p>高斯似然乘高斯先验，后验仍是高斯。把指数中的二次项整理，可以得到：</p>
+  \[
+  q^{old}(w)=p(w\mid t,\alpha^{old},\beta^{old})=\mathcal N(w\mid m,S),
+  \]
+  \[
+  S=(\alpha^{old}I+\beta^{old}\Phi^T\Phi)^{-1},\qquad
+  m=\beta^{old}S\Phi^Tt.
+  \]
+  <p>书中记作 \(m_N,S_N\)，这里暂写成 \(m,S\)，强调它们在本次 M 步中已经固定。\(m\) 描述当前估计的权重中心，\(S\) 描述还剩多少不确定性。需要传给 M 步的不是一个拟合曲线，而是包含一阶、二阶信息的后验分布。<span class="source-note">印刷页 448 对第 3 章后验公式的引用；公式展开为教学补充。</span></p>
+
+  <h3>3. 两个 trace 项，分别在补偿什么？</h3>
+  <p>完整数据对数概率由似然与先验相加而成。忽略与超参数无关的常数：</p>
+  \[
+  \log p(t,w\mid\alpha,\beta)
+  =\frac M2\log\alpha-\frac\alpha2w^Tw
+  +\frac N2\log\beta-\frac\beta2\|t-\Phi w\|^2+C.
+  \]
+  <p class="source-note">式 (9.61)、(9.62)，印刷页 448—449。</p>
+  <p>取后验期望，需要两个二阶矩。首先，\(\mathbb E[ww^T]=mm^T+S\)，所以：</p>
+  \[
+  \mathbb E[w^Tw]=m^Tm+\operatorname{Tr}(S).
+  \]
+  <p>再令 \(w=m+\delta\)，其中 \(\mathbb E[\delta]=0\)、\(\mathbb E[\delta\delta^T]=S\)。展开误差平方时交叉项期望为零，得到：</p>
+  \[
+  \mathbb E[\|t-\Phi w\|^2]
+  =\|t-\Phi m\|^2+\operatorname{Tr}(\Phi S\Phi^T).
+  \]
+  <p>第一个 trace 累加权重各维的后验方差；第二个 trace 累加这些权重不确定性在训练输入上的预测方差。只用 \(m\) 计算残差，会漏掉“权重尚未确定”造成的预期误差。比如单权重后验均值为 0、方差为 4，其预期平方大小是 4；直接把权重填成 0 会误判为完全不需要先验方差。<span class="source-note">式 (9.63) 中二阶矩的展开；残差恒等式与单权重例子为教学推导。</span></p>
+
+  <h3>4. M 步：把两个后验期望当成常数求导</h3>
+  <p>令 \(A=m^Tm+\operatorname{Tr}(S)\)，\(B=\|t-\Phi m\|^2+\operatorname{Tr}(\Phi S\Phi^T)\)，则：</p>
+  \[
+  Q(\alpha,\beta)=\frac M2\log\alpha-\frac\alpha2A
+                 +\frac N2\log\beta-\frac\beta2B+C.
+  \]
+  \[
+  \frac{\partial Q}{\partial\alpha}=\frac{M}{2\alpha}-\frac A2=0,
+  \qquad
+  \frac{\partial Q}{\partial\beta}=\frac{N}{2\beta}-\frac B2=0.
+  \]
+  \[
+  \boxed{\alpha^{new}=\frac{M}{m^Tm+\operatorname{Tr}(S)}}\qquad
+  \boxed{\beta^{new}=\frac{N}{\|t-\Phi m\|^2+\operatorname{Tr}(\Phi S\Phi^T)}}.
+  \]
+  <p>直觉是：先验方差更新为每个权重维度的预期平方大小，噪声方差更新为每个观测的预期残差平方。右侧所有后验量都来自同一套旧超参数；求导时不要再对 \(m,S\) 求导，也不要更新 \(\alpha\) 后马上改变 \(S\) 却仍声称在做原来这一轮联合 M 步。<span class="source-note">\(\alpha\) 更新为式 (9.63)；\(\beta\) 更新是书中练习 9.21 所要求的对应推导。</span></p>
+
+  <details><summary>跟着算一轮：均值、方差怎样一起进入更新？</summary>
+    <p>取两个观测 \(t=(1,3)^T\)，模型只有一个常数权重，即 \(\Phi=(1,1)^T\)、\(M=1\)、\(N=2\)。初始化 \(\alpha^{old}=\beta^{old}=1\)。E 步得到 \(S=1/(1+2)=1/3\)，\(m=(1/3)(1+3)=4/3\)。因此两个预测值都是 4/3，但这个权重仍有方差 1/3。</p>
+    \[
+    A=(4/3)^2+1/3=19/9,\qquad
+    B=(1-4/3)^2+(3-4/3)^2+2(1/3)=32/9.
+    \]
+    \[
+    \alpha^{new}=9/19\approx0.474,\qquad
+    \beta^{new}=2/(32/9)=9/16=0.5625.
+    \]
+    <p>残差的直接平方和为 26/9，而权重不确定性又贡献 2/3，所以噪声方差使用的分母总量为 32/9。假如丢掉第二项，就会高估噪声精度。完成这两个更新后，下一轮才重新计算后验均值和方差。这是自设的最小教学例子，不是书中实验数据。</p>
+  </details>
+
+  <h3>5. 为什么第 3 章的 γ 更新看起来不同？</h3>
+  <p>在某套给定超参数下，令 \(\lambda_i\) 为 \(\beta\Phi^T\Phi\) 的特征值。定义：</p>
+  \[
+  \gamma=\sum_{i=1}^M\frac{\lambda_i}{\alpha+\lambda_i}
+  =M-\alpha\operatorname{Tr}(S).
+  \]
+  <p>每个方向贡献 0 到 1 之间的一部分：数据约束强的方向贡献接近 1，主要受先验压制的方向贡献接近 0。因此 \(\gamma\) 可理解为由数据有效确定的参数数量，并不要求是整数。由 \((\alpha I+\beta\Phi^T\Phi)S=I\) 取迹，还可得到 \(\beta\operatorname{Tr}(\Phi S\Phi^T)=\gamma\)。<span class="source-note">式 (9.64)，印刷页 449；特征值解释与迹恒等式为教学展开。</span></p>
+  <p><strong>在固定点上</strong>，新旧超参数一致，EM 更新因此满足：</p>
+  \[
+  \alpha(m^Tm+\operatorname{Tr}(S))=M
+  \quad\Longrightarrow\quad \alpha=\frac{\gamma}{m^Tm},
+  \]
+  \[
+  \beta\|t-\Phi m\|^2+\gamma=N
+  \quad\Longrightarrow\quad \beta=\frac{N-\gamma}{\|t-\Phi m\|^2}.
+  \]
+  <p>这就与第 3 章直接优化证据得到的重估条件接上了。但两种迭代的每一步并不相同：EM 的 \(\alpha^{new}\) 使用 \(M/(m^Tm+\operatorname{Tr}S)\)，另一种重估使用 \(\gamma^{old}/(m^Tm)\)；只有满足自洽条件时，两者才相等。分母为零或边界解也不能直接套用上述有限值表达。书中明确限定：若找到同一个证据局部极大值，结果应一致。<span class="source-note">式 (9.65) 与相邻讨论，印刷页 449。</span></p>
+  <p>例如上面的单权重例子，旧参数给出 \(\gamma=2/3\)。另一种重估会得到 \(\alpha^{new}=(2/3)/(16/9)=3/8\)，与 EM 的 \(9/19\) 不同。这并非算错，而是两条迭代路径采用了不同的更新映射。比较算法时，应区分“驻点满足相同方程”和“每一轮都给出相同数值”；<a href="https://www.microsoft.com/en-us/research/wp-content/uploads/2016/05/prml-errata-1st-20110921.pdf#page=20">官方勘误对练习 9.23</a>也明确了驻点这一限定。</p>
+
+  <h3>6. 顺着原书再走一步：RVM 的逐权重精度</h3>
+  <p>本节最后还讨论相关向量机：把共同精度 \(\alpha\) 换成每个权重独立的 \(\alpha_i\)，先验精度矩阵为 \(A=\operatorname{diag}(\alpha_i)\)。E 步照样计算高斯后验，协方差改为 \(S=(A^{old}+\beta^{old}\Phi^T\Phi)^{-1}\)。M 步为：</p>
+  \[
+  \alpha_i^{new}=\frac{1}{m_i^2+S_{ii}},\qquad
+  (\beta^{new})^{-1}
+  =\frac{\|t-\Phi m\|^2+(\beta^{old})^{-1}\sum_i\gamma_i^{old}}{N},
+  \quad\gamma_i^{old}=1-\alpha_i^{old}S_{ii}.
+  \]
+  <p>若某个权重的后验二阶矩很小，对应精度就会变大，先验会更强地压缩它。这将 EM 与稀疏贝叶斯学习连接起来。噪声更新仍包含后验不确定性，只是用 \(\sum_i\gamma_i\) 重写了 trace 项。<span class="source-note">式 (9.66)—(9.68)，印刷页 449—450；这里显式标记旧参数，避免把右侧误读成新参数。</span></p>
+  <p>本例也说明 EM 的适用范围远超聚类：隐变量既可以是离散标签，也可以是连续权重；E 步既可以算类别责任度，也可以算高斯后验的矩。精确 EM 在适当的有限值条件下使证据不下降，但高斯权重后验可解析并不代表超参数的证据曲面全局凸；不同初始化仍可能进入不同驻点。保证进步与保证找到最好答案，需要分开理解。</p>
+</section>

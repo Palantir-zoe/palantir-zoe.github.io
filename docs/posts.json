@@ -41,5 +41,12 @@
     "section": "NLP 阅读笔记",
     "description": "从 RNN 编码器—解码器的固定上下文瓶颈，理解 Attention 如何逐步读取源句，并为学习 Transformer 补足背景。",
     "collection": "nlp"
+  },
+  {
+    "slug": "prml-mixture-models-em",
+    "title": "PRML 第九章：混合模型与 EM · 中文精读笔记",
+    "section": "PRML 第 9 章 · 审阅稿",
+    "description": "从 K-means、高斯混合和软责任度，到 Bernoulli 混合、贝叶斯回归与一般 EM 的下界证明；配四点手算和互动演示。",
+    "collection": "prml"
   }
 ]
