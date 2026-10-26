@@ -1,0 +1,64 @@
+<div class="review-banner"><span>待审版本 · 2026-10-26</span><p>按 <em>09_conv.pdf</em> 的 PDF 页码编排；图为讲义原图的局部截图，点击可打开大图。中文解释和计算为本笔记整理，图 9.x 的编号沿用讲义。</p></div>
+<p class="lead">卷积网络的主线只有四件事：<strong>局部连接</strong>规定谁能读谁，<strong>参数共享</strong>规定哪些边用同一权重，<strong>步幅与补零</strong>规定输出网格，<strong>池化</strong>汇总邻域响应。下面逐图回答这些规则的含义和边界。</p>
+
+<h2 id="core">1. 从矩阵乘法到卷积：算什么、怎样求梯度（第 2–7 页）</h2>
+<p>讲义第 2–3 页的“替换矩阵乘法”是指把无结构的稠密线性映射改成有结构的线性映射；损失函数、链式法则和梯度下降仍照常使用。对二维输入，深度学习框架通常计算的是<strong>互相关</strong>，即核不翻转：</p>
+\[Y_{i,j,o}=b_o+\sum_{c=1}^{C_{\rm in}}\sum_{u=0}^{K_h-1}\sum_{v=0}^{K_w-1}K_{u,v,c,o}X_{iS_h+u-P_h,\,jS_w+v-P_w,\,c}.\]
+<p>式中越界的 \(X\) 视为补零；\(o\) 是输出通道。一个输出位置读输入的一个小窗口，一个核在所有空间位置重复使用。数学上若定义“卷积”要翻核，图 9.1 和 PyTorch 的 <code>conv2d</code> 采用的则是上式这种工程约定。</p>
+<div class="slide-card"><figure><img src="figures/fig-9-01.png" alt="图9.1：三行四列输入与二乘二卷积核，得到二行三列输出" loading="lazy"><figcaption>讲义第 6 页 · 图 9.1 · Goodfellow (2016)</figcaption></figure><div><h3>手算一个输出</h3><p>图中左上角的输出是 \(aw+bx+ey+fz\)。取 \(X=\begin{bmatrix}1&2&3&4\\5&6&7&8\\9&10&11&12\end{bmatrix}\)、\(K=\begin{bmatrix}1&2\\3&4\end{bmatrix}\)，则 \(Y=\begin{bmatrix}44&54&64\\84&94&104\end{bmatrix}\)。<strong>3×4 输入、2×2 核、步幅 1、无补零，得到 2×3 输出。</strong></p><p>第 4–5 页的矩阵乘法与转置是为反传铺垫：若把窗口展开成线性算子 \(Y=AX\)，反传到输入就是 \(A^\top G\)，不是 \(A^{-1}G\)。</p></div></div>
+<div class="note-focus"><strong>三种运算（第 7 页）</strong><br>前向：由 \(X,K\) 算 \(Y\)。输入梯度：由上游梯度 \(G=\partial L/\partial Y\) 经转置线性算子传回 \(X\)。权重梯度：同一个核在所有窗口复用，因此各窗口的贡献要相加。<br>\[\frac{\partial L}{\partial K_{u,v}}=\sum_{i,j}G_{i,j}X_{i+u,j+v},\qquad \frac{\partial L}{\partial X_{a,b}}=\sum_{i,j,u,v:\;i+u=a,\,j+v=b}G_{i,j}K_{u,v}.\]<small>以上两式写的是单输入、单输出通道、步幅 1、无补零的情况。</small></div>
+<p>沿用上面的数值例，令 \(L=\sum Y_{i,j}\)，于是 \(G\) 全为 1。\(\partial L/\partial K_{0,0}=1+2+3+5+6+7=24\)，\(\partial L/\partial K_{1,1}=6+7+8+10+11+12=54\)；中心输入 \(X_{1,1}\) 被四个窗口读取，故 \(\partial L/\partial X_{1,1}=1+2+3+4=10\)。</p>
+
+<h2 id="sparse-share">2. 局部连接、感受野、参数共享（第 8–13 页）</h2>
+<div class="slide-card pair"><figure><img src="figures/fig-9-02.png" alt="图9.2：单个输入只影响邻近的三个输出；与稠密连接对比" loading="lazy"><figcaption>第 8 页 · 图 9.2 · Goodfellow (2016)</figcaption></figure><figure><img src="figures/fig-9-03.png" alt="图9.3：单个输出只读取邻近的三个输入；与稠密连接对比" loading="lazy"><figcaption>第 9 页 · 图 9.3 · Goodfellow (2016)</figcaption></figure><div><h3>“Sparse 选哪些”由核确定</h3><p>把一维核宽固定为 3，输出 \(s_j\) 只读取 \(x_{j-1},x_j,x_{j+1}\)。反过来看，\(x_3\) 只影响 \(s_2,s_3,s_4\)。灰色节点分别展示这两个方向。<strong>连接模式由核宽、位置、步幅、补零预先定好</strong>；训练学习的是边上的数值，不是临时挑几个输入。</p></div></div>
+<div class="slide-card"><figure><img src="figures/fig-9-04.png" alt="图9.4：两层宽三的局部连接使中间节点间接受到五个输入影响" loading="lazy"><figcaption>第 10 页 · 图 9.4 · Goodfellow (2016)</figcaption></figure><div><h3>多层以后为何能看得更远</h3><p>\(h_3\) 直接读 \(x_2,x_3,x_4\)；\(g_3\) 直接读 \(h_2,h_3,h_4\)，因而间接依赖 \(x_1,\ldots,x_5\)。步幅全为 1、每层核宽 \(k\) 时，\(L\) 层感受野宽度为 \(R_L=1+L(k-1)\)：核宽 3 时依次是 3、5、7……图中的 \(x,h,g\) 只是不同层的记号；别的页用 \(s\) 表示输出，没有新的运算。</p></div></div>
+<div class="slide-card"><figure><img src="figures/fig-9-05.png" alt="图9.5：卷积在各空间位置重复使用相同的连接权重" loading="lazy"><figcaption>第 11 页 · 图 9.5 · Goodfellow (2016)</figcaption></figure><div><h3>“共享”到底共享什么</h3><p>例如 \(s_i=ax_{i-1}+bx_i+cx_{i+1}\)。向右移动一格，变成 \(s_{i+1}=ax_i+bx_{i+1}+cx_{i+2}\)：输入变了，\(a,b,c\) 没变。反向传播时，每个位置对 \(a\) 的梯度累加到<strong>同一个</strong> \(a\)。局部连接控制计算量；共享控制独立参数量。这两条规则可以分开选择。</p></div></div>
+<div class="slide-card"><figure><img src="figures/fig-9-06.png" alt="图9.6：用一乘二差分核检测图片中的竖直边缘" loading="lazy"><figcaption>第 12 页 · 图 9.6 · Goodfellow (2016)</figcaption></figure><div><h3>差分核为什么显边缘</h3><p>\(K=[1,-1]\) 给出 \(Y_{i,j}=X_{i,j}-X_{i,j+1}\)。两侧亮度接近时约为 0，跨竖直边界时绝对值较大；符号对应明暗方向。按讲义的尺寸记法，输入 320×280、核 2×1，沿核扫描的那一轴减少 1，输出 319×280。</p></div></div>
+<h3>图 9.6 的效率账本（第 13 页）</h3>
+<p>输入 320×280＝89,600 个标量；输出 319×280＝89,320 个标量。以该核为例，忽略偏置：</p>
+<div class="table-scroll"><table><thead><tr><th>实现</th><th>需存的权重标量</th><th>朴素乘加计数</th></tr></thead><tbody><tr><td>稠密矩阵</td><td>\(89\,320\times89\,600=8\,003\,072\,000\)</td><td>大于 \(16\times10^9\)</td></tr><tr><td>仅保留局部边的显式稀疏矩阵</td><td>\(2\times89\,320=178\,640\) 个非零项</td><td>\(3\times89\,320=267\,960\)</td></tr><tr><td>卷积核</td><td><strong>2 个独立权重</strong></td><td>\(267\,960\)</td></tr></tbody></table></div>
+<p class="muted">每个输出做 2 次乘法、1 次加法，故记作 3 次标量运算。显式稀疏矩阵的 178,640 项可能反复存同两个数；卷积只存一次。稠密计算量是按普通矩阵乘法估计，不是某个优化库的实测速度。</p>
+
+<h2 id="pooling">3. ReLU 与池化：哪一种“不变”（第 14–17 页）</h2>
+<div class="slide-card"><figure><img src="figures/fig-9-07.png" alt="图9.7：左图把卷积激活池化统称一个卷积层，右图把三者分成三层" loading="lazy"><figcaption>第 14 页 · 图 9.7 · Goodfellow (2016)</figcaption></figure><div><h3>左右做的事完全一样</h3><p>数据流都是 <strong>卷积仿射变换 → ReLU → 池化</strong>。左边把三个阶段合称一个“卷积层”，右边逐个称“层”；只是术语颗粒度不同。狭义的 <code>Conv2d</code> 只计算核扫描与偏置；ReLU、池化可接可不接。\(\operatorname{ReLU}(z)=\max(0,z)\) 加入非线性；池化再汇总邻域。</p></div></div>
+<div class="slide-card"><figure><img src="figures/fig-9-08.png" alt="图9.8：峰值在相邻位置移动后，部分最大池化输出保持不变" loading="lazy"><figcaption>第 15 页 · 图 9.8 · Goodfellow (2016)</figcaption></figure><div><h3>位置移动一格，哪些值没变？</h3><p>上排检测值约为 \([0.1,1,0.2,0.1]\)，下排峰值移到第三格。宽 3、步幅 1 的窗口中，中间两个窗口依旧都含那个峰值，所以输出仍为 1；两端的结果变了。<strong>最大池化只提供局部位置容忍</strong>，不保证整张特征图平移后完全相同。此图步幅为 1，因此也没有下采样。</p></div></div>
+<div class="slide-card"><figure><img src="figures/fig-9-09.png" alt="图9.9：不同通道检测同一数字的不同形变，跨通道最大池化给相近响应" loading="lazy"><figcaption>第 16 页 · 图 9.9 · Goodfellow (2016)</figcaption></figure><div><h3>跨通道池化不是空间池化</h3><p>多个检测器分别对同一目标的几种已学形态敏感。相同位置取 \(p_{i,j}=\max_c a_{i,j,c}\)：不管是检测器 1 还是 3 响应较强，池化单元都能较大。代价是丢失“哪一种形态”更强的信息；前提是训练确实学到了这些变形检测器。</p></div></div>
+<div class="slide-card"><figure><img src="figures/fig-9-10.png" alt="图9.10：长度六的一维序列用宽三步幅二进行最大池化，输出三个数" loading="lazy"><figcaption>第 17 页 · 图 9.10 · Goodfellow (2016)</figcaption></figure><div><h3>池化与下采样何时同时发生</h3><p>\([0.1,1,0.2,0.1,0,0.1]\) 用宽 3、步幅 2 取最大值得 \([1,0.2,0.1]\)。三个窗口分别覆盖位置 1–3、3–5、5–6。最后一个窗口只有两个元素，讲义允许保留；若采用“窗口必须完整”的 <code>valid</code> 约定，则只得到前两个输出。<strong>输出尺寸必须连同边界约定一起说。</strong></p></div></div>
+<p class="note-focus"><strong>区分两个词：</strong>步幅为 1 的卷积对平移近似<strong>等变</strong>：输入移动，响应也跟着移动（边界会破坏精确等变）。池化让某些小范围移动得到相同汇总值，是<strong>局部近似不变</strong>。若步幅大于 1，采样还会引入更多位置敏感性。</p>
+
+<h2 id="head">4. 分类头为什么有三种（第 18 页）</h2>
+<div class="slide-card wide"><figure><img src="figures/fig-9-11.png" alt="图9.11：展平全连接、先池化再全连接、全卷积加全局平均池化三种分类头" loading="lazy"><figcaption>第 18 页 · 图 9.11 · Goodfellow (2016)</figcaption></figure><div><p>三列共享前半段：256×256×3 → 卷积/ReLU 得 256×256×64 → 步幅 4 池化得 64×64×64 → 卷积/ReLU 后仍为 64×64×64。后半段是三种选择：</p><ol><li><strong>左：</strong>池化到 16×16×64，展平为 16,384 维，接 1,000 类全连接。末层有 \(16\,384\times1\,000+1\,000=16\,385\,000\) 个参数。</li><li><strong>中：</strong>先池到 3×3×64，仅 576 维，末层为 \(576\times1\,000+1\,000=577\,000\) 个参数。</li><li><strong>右：</strong>卷积产生 1,000 张 16×16 类别响应图；<em>各通道分别</em>对空间 16×16 求平均，成为 1,000 个分数，再 softmax。卷积末层参数取决于核大小，讲义未指定。</li></ol><p>软最大值把 1,000 个分数归一为类别概率；全局平均没有把 1,000 个类别混成一个数。</p></div></div>
+
+<h2 id="geometry">5. 步幅、补零与连接变体（第 19–23 页）</h2>
+<p class="note-focus"><strong>单轴输出长度：</strong>\[N_{\rm out}=\left\lfloor\frac{N+2P-K}{S}\right\rfloor+1\]这里先假设膨胀率为 1、两侧各补 \(P\) 个零，只保留完整卷积窗口。二维对高、宽各算一次。池化若允许末尾不完整窗口，要改用相应边界规则。</p>
+<div class="slide-card"><figure><img src="figures/fig-9-12.png" alt="图9.12：步幅二卷积与先步幅一卷积再选取奇数位输出的对应关系" loading="lazy"><figcaption>第 19 页 · 图 9.12 · Goodfellow (2016)</figcaption></figure><div><h3>步幅 2 跳过的是输出位置</h3><p>图中直接算 \(s_1,s_2,s_3\)，等价于先算步幅 1 的 \(z_1,\ldots,z_5\)，再取 \(z_1,z_3,z_5\)。\(x_2,x_4\) 仍参与邻近窗口的计算，并没有从输入中删去。步幅使网格变稀疏，同时缩小特征图。</p></div></div>
+<div class="slide-card"><figure><img src="figures/fig-9-13.png" alt="图9.13：多层卷积不补零会逐层缩短长度，每层补零可以保持长度" loading="lazy"><figcaption>第 20 页 · 图 9.13 · Goodfellow (2016)</figcaption></figure><div><h3>补多少个零？先决定目标尺寸</h3><p>核宽 3、步幅 1，不补零每层减少 2：长度 5 → 3 → 1。若要保持 5，每侧补 \(P=(K-1)/2=1\) 个零。核宽 5 则每侧补 2 个。图里的黑点是每一层重新加入的固定零，不是上一层产生的可学习神经元。偶数核或非对称目标尺寸可能需要左右补不同数量。</p></div></div>
+<div class="slide-card"><figure><img src="figures/fig-9-14.png" alt="图9.14：局部但不共享、局部且共享的卷积，以及全连接三种模式" loading="lazy"><figcaption>第 21 页 · 图 9.14 · Goodfellow (2016)</figcaption></figure><div><h3>两条独立的设计轴</h3><p>按图中 5 入 5 出、局部核宽 2、忽略偏置计：<strong>局部无共享</strong>共 9 条边、9 个权重；<strong>标准卷积</strong>仍是这些局部边，但只用 2 个共享权重；<strong>全连接</strong>有 5×5＝25 个独立权重。局部与否决定连哪些边；共享与否决定边是否复用同一个数。</p></div></div>
+<div class="slide-card"><figure><img src="figures/fig-9-15.png" alt="图9.15：输入输出通道分组相连，空间位置仍按卷积处理" loading="lazy"><figcaption>第 22 页 · 图 9.15 · Goodfellow (2016)</figcaption></figure><div><h3>通道连接是另一回事</h3><p>图中有 4 个输入通道和 4 个输出通道：前两个输出只连前两个输入，后两个输出只连后两个输入。每个通道对仍在空间网格上用局部核。若核为 3×3，全通道连接需 \(4\times4\times9=144\) 个权重；分两组则 \(2\times(2\times2\times9)=72\)。这是分组卷积思想；不同于图 9.9 的“跨通道取最大值”。</p></div></div>
+<div class="slide-card"><figure><img src="figures/fig-9-16.png" alt="图9.16：从局部无共享到周期轮换的平铺卷积，再到全位置共享的普通卷积" loading="lazy"><figcaption>第 23 页 · 图 9.16 · Goodfellow (2016)</figcaption></figure><div><h3>Tiled 是周期复用权重组</h3><p>中排按位置交替使用 \(A=(a,b)\)、\(B=(c,d)\)，于是核组序列为 \(A,B,A,B,A\)。该图中局部无共享、tiled、普通卷积分别用 9、4、2 个权重（不计偏置）。它没有改变局部连接范围，也不是把图片切成互不重叠的块。</p></div></div>
+
+<h2 id="beyond">6. 迭代标注、学到的核、后续架构（第 24–27 页）</h2>
+<div class="slide-card"><figure><img src="figures/fig-9-17.png" alt="图9.17：相同图像多轮进入隐藏层，上轮预测反馈给下一轮像素标注" loading="lazy"><figcaption>第 24 页 · 图 9.17 · Goodfellow (2016)</figcaption></figure><div><h3>图中 U、V、W 怎样共享</h3><p>同一张 \(X\) 在每轮经同一 \(U\) 提取信息；\(H^{(t)}\) 经同一 \(V\) 产生预测 \(\hat Y^{(t)}\)；上一轮的<strong>预测标签</strong> \(\hat Y^{(t-1)}\) 经同一 \(W\) 回馈给下一轮隐藏层。可记作 \(H^{(t)}=f(U*X+W*\hat Y^{(t-1)})\)、\(\hat Y^{(t)}=g(V*H^{(t)})\)，首轮反馈设为零。<strong>U、V、W 是三套不同参数；各自跨迭代复用。</strong>这里 \(t\) 是细化轮次，不是视频帧序号。</p></div></div>
+<div class="slide-card"><figure><img src="figures/fig-9-18.png" alt="图9.18：Gabor 函数的方向、位置、尺度、频率和相位变化" loading="lazy"><figcaption>第 25 页 · 图 9.18 · Goodfellow (2016)</figcaption></figure><div><h3>为什么像一组小条纹</h3><p>Gabor 核可理解为“高斯包络 × 余弦条纹”：\(g(x,y)=\exp[-(x'^2+\gamma^2y'^2)/(2\sigma^2)]\cos(2\pi x'/\lambda+\phi)\)，其中 \(x'=x\cos\theta+y\sin\theta\)、\(y'=-x\sin\theta+y\cos\theta\)。\(\theta\) 控制方向、\(\sigma\) 控制范围、\(\lambda\) 控制频率、\(\phi\) 控制相位。图中三组分别展示位置/旋转、尺度、频率/相位变化；亮暗代表正负权重，灰色接近零。</p></div></div>
+<div class="slide-card"><figure><img src="figures/fig-9-19.png" alt="图9.19：两类学习方法得到的类似 Gabor 的局部权重图案" loading="lazy"><figcaption>第 26 页 · 图 9.19 · Goodfellow (2016)</figcaption></figure><div><h3>“像 Gabor”不等于预设 Gabor</h3><p>训练后的许多局部权重呈现有方向的明暗条纹，也有颜色对立图案。<strong>左图</strong>来自无监督 spike-and-slab sparse coding 学到的图块权重；<strong>右图</strong>才是有监督 convolutional maxout network 第一层的卷积核。两组来源不同，它们也并非个个都是严格的 Gabor 函数；图中显示的是权重，不是某张图片的激活值。</p></div></div>
+<h3>末页四种架构：分别解决什么</h3>
+<div class="table-scroll"><table><thead><tr><th>讲义名称</th><th>抓住一个设计点</th></tr></thead><tbody><tr><td>Spatial Transducer Net</td><td>保留空间网格，从输入网格产生对应的输出网格；讲义所用名称不要混同为 <em>Spatial Transformer Network</em>。</td></tr><tr><td>All Convolutional Net</td><td>用跨步卷积缩小网格，减少对独立池化层的依赖。</td></tr><tr><td>Inception</td><td>并行的不同尺度分支提取特征，常用 1×1 卷积控制通道数与计算量。</td></tr><tr><td>ResNet</td><td>残差块 \(y=x+F(x)\) 提供恒等捷径，使很深网络更容易优化；它不保证任何设置下梯度都绝不消失。</td></tr></tbody></table></div>
+
+<h2 id="practice">7. 最小代码：手算与自动求导对照</h2>
+<p>下面直接复现图 9.1 的 2×2 例子。PyTorch 的 <code>F.conv2d</code> 按 <code>[批量, 输入通道, 高, 宽]</code> 读取输入，核按 <code>[输出通道, 输入通道/组数, 核高, 核宽]</code> 存放。</p>
+<pre><code>import torch
+import torch.nn.functional as F
+
+x = torch.arange(1., 13.).reshape(1, 1, 3, 4).requires_grad_()
+k = torch.tensor([[[[1., 2.], [3., 4.]]]], requires_grad=True)
+y = F.conv2d(x, k)                 # stride=1, padding=0
+print(y.shape, y[0, 0])            # (1, 1, 2, 3); [[44,54,64],[84,94,104]]
+y.sum().backward()
+print(k.grad[0, 0, 0, 0])          # 24
+print(k.grad[0, 0, 1, 1])          # 54
+print(x.grad[0, 0, 1, 1])          # 10</code></pre>
+<p class="muted">想继续验证尺寸，可分别修改 <code>stride</code> 和 <code>padding</code>，再用上面的输出长度公式预先算出形状；<code>groups=2</code> 对应分组通道连接，但输入、输出通道数都要能被 2 整除。</p>
+
+<h2 id="recap">一页回顾</h2>
+<div class="table-scroll"><table><thead><tr><th>看到术语</th><th>立刻问</th></tr></thead><tbody><tr><td>核 / 局部连接</td><td>一个输出读输入的哪一块？</td></tr><tr><td>参数共享</td><td>哪些不同位置的边复用同一数值？</td></tr><tr><td>感受野</td><td>跨多层后，一个输出最终依赖哪些原始输入？</td></tr><tr><td>步幅 / 补零 / 池化</td><td>输出有几格？末端窗口怎样处理？</td></tr><tr><td>通道</td><td>每个输出通道连全部输入通道，还是只连其中一组？</td></tr><tr><td>平移等变 / 不变</td><td>响应跟着平移，还是汇总后某个数保持相同？</td></tr></tbody></table></div>
+<p class="source-note">图源：Ian Goodfellow, <a href="https://www.deeplearningbook.org/slides/09_conv.pdf">Convolutional Networks: Lecture slides for Chapter 9 of <em>Deep Learning</em></a> (2016)；相关文字解释参照 <a href="https://www.deeplearningbook.org/contents/convnets.html"><em>Deep Learning</em> 第 9 章</a>。代码接口和交叉相关约定参照 <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.functional.conv2d">PyTorch <code>F.conv2d</code> 文档</a>；架构可追读 <a href="https://arxiv.org/abs/1411.4038">FCN</a>、<a href="https://arxiv.org/abs/1412.6806">All-CNN</a>、<a href="https://arxiv.org/abs/1409.4842">Inception</a>、<a href="https://arxiv.org/abs/1512.03385">ResNet</a>。</p>

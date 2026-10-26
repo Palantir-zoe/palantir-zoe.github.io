@@ -48,5 +48,12 @@
     "section": "PRML 第 9 章 · 审阅稿",
     "description": "从 K-means、高斯混合和软责任度，到 Bernoulli 混合、贝叶斯回归与一般 EM 的下界证明；配四点手算和互动演示。",
     "collection": "prml"
+  },
+  {
+    "slug": "conv-ch09",
+    "title": "09_conv：卷积网络讲义中文学习笔记",
+    "section": "Deep Learning 第 9 章 · 待审版本",
+    "description": "对照 Goodfellow 卷积网络讲义图 9.1–9.19，精讲局部连接、参数共享、感受野、池化、尺寸计算、连接变体与反向传播。",
+    "collection": "deep-learning"
   }
 ]

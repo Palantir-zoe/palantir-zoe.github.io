@@ -42,7 +42,7 @@ def load_posts(root=ROOT):
                 raise ValueError(f"Article {slug} needs a text field: {key}")
         if not post["title"].strip() or not post["section"].strip():
             raise ValueError(f"Article {slug} needs a non-empty title and section")
-        if post.get("collection", "flow-diffusion") not in ("flow-diffusion", "nlp", "prml"):
+        if post.get("collection", "flow-diffusion") not in ("flow-diffusion", "nlp", "prml", "deep-learning"):
             raise ValueError(f"Article {slug} has an unknown collection")
     return posts
 
@@ -52,6 +52,7 @@ def render_post_list(posts):
         ("flow-diffusion", "Flow Matching 与 Diffusion Models", "按章节阅读，每一节都是一篇独立笔记。"),
         ("nlp", "NLP 与 Transformer", "从经典序列模型与注意力机制开始，逐步理解 Transformer。"),
         ("prml", "PRML 与概率模型", "按章节梳理模型、推导、算法步骤与适用边界。"),
+        ("deep-learning", "深度学习讲义", "对照课程图示，整理结构、公式、计算与实现细节。"),
     )
     sections = []
     for key, heading, intro in collections:
