@@ -2,9 +2,9 @@
 <p class="lead">卷积网络的主线只有四件事：<strong>局部连接</strong>规定谁能读谁，<strong>参数共享</strong>规定哪些边用同一权重，<strong>步幅与补零</strong>规定输出网格，<strong>池化</strong>汇总邻域响应。下面逐图回答这些规则的含义和边界。</p>
 
 <h2 id="core">1. 从矩阵乘法到卷积：算什么、怎样求梯度（第 2–7 页）</h2>
-<p>讲义第 2–3 页的“替换矩阵乘法”是指把无结构的稠密线性映射改成有结构的线性映射；损失函数、链式法则和梯度下降仍照常使用。对二维输入，深度学习框架通常计算的是<strong>互相关</strong>，即核不翻转：</p>
+<p>讲义第 2–3 页的“替换矩阵乘法”是指把无结构的稠密线性映射改成有结构的线性映射；损失函数、链式法则和梯度下降仍照常使用。输入可是一维序列、二维图像或三维时空网格，差别在核的维度。对二维输入，深度学习框架通常计算的是<strong>互相关</strong>，即核不翻转：</p>
 \[Y_{i,j,o}=b_o+\sum_{c=1}^{C_{\rm in}}\sum_{u=0}^{K_h-1}\sum_{v=0}^{K_w-1}K_{u,v,c,o}X_{iS_h+u-P_h,\,jS_w+v-P_w,\,c}.\]
-<p>式中越界的 \(X\) 视为补零；\(o\) 是输出通道。一个输出位置读输入的一个小窗口，一个核在所有空间位置重复使用。数学上若定义“卷积”要翻核，图 9.1 和 PyTorch 的 <code>conv2d</code> 采用的则是上式这种工程约定。</p>
+<p>式中越界的 \(X\) 视为补零；\(o\) 是输出通道。一个输出位置读输入的一个小窗口，一个核在所有空间位置重复使用。参数数目为 \(K_hK_wC_{\rm in}C_{\rm out}+C_{\rm out}\)（含每个输出通道的偏置），不随图像宽高增长。数学上若定义“卷积”要翻核，图 9.1 和 PyTorch 的 <code>conv2d</code> 采用的则是上式这种工程约定。</p>
 <div class="slide-card"><figure><img src="figures/fig-9-01.png" alt="图9.1：三行四列输入与二乘二卷积核，得到二行三列输出" loading="lazy"><figcaption>讲义第 6 页 · 图 9.1 · Goodfellow (2016)</figcaption></figure><div><h3>手算一个输出</h3><p>图中左上角的输出是 \(aw+bx+ey+fz\)。取 \(X=\begin{bmatrix}1&2&3&4\\5&6&7&8\\9&10&11&12\end{bmatrix}\)、\(K=\begin{bmatrix}1&2\\3&4\end{bmatrix}\)，则 \(Y=\begin{bmatrix}44&54&64\\84&94&104\end{bmatrix}\)。<strong>3×4 输入、2×2 核、步幅 1、无补零，得到 2×3 输出。</strong></p><p>第 4–5 页的矩阵乘法与转置是为反传铺垫：若把窗口展开成线性算子 \(Y=AX\)，反传到输入就是 \(A^\top G\)，不是 \(A^{-1}G\)。</p></div></div>
 <div class="note-focus"><strong>三种运算（第 7 页）</strong><br>前向：由 \(X,K\) 算 \(Y\)。输入梯度：由上游梯度 \(G=\partial L/\partial Y\) 经转置线性算子传回 \(X\)。权重梯度：同一个核在所有窗口复用，因此各窗口的贡献要相加。<br>\[\frac{\partial L}{\partial K_{u,v}}=\sum_{i,j}G_{i,j}X_{i+u,j+v},\qquad \frac{\partial L}{\partial X_{a,b}}=\sum_{i,j,u,v:\;i+u=a,\,j+v=b}G_{i,j}K_{u,v}.\]<small>以上两式写的是单输入、单输出通道、步幅 1、无补零的情况。</small></div>
 <p>沿用上面的数值例，令 \(L=\sum Y_{i,j}\)，于是 \(G\) 全为 1。\(\partial L/\partial K_{0,0}=1+2+3+5+6+7=24\)，\(\partial L/\partial K_{1,1}=6+7+8+10+11+12=54\)；中心输入 \(X_{1,1}\) 被四个窗口读取，故 \(\partial L/\partial X_{1,1}=1+2+3+4=10\)。</p>
@@ -42,7 +42,7 @@
 <div class="slide-card"><figure><img src="figures/fig-9-18.png" alt="图9.18：Gabor 函数的方向、位置、尺度、频率和相位变化" loading="lazy"><figcaption>第 25 页 · 图 9.18 · Goodfellow (2016)</figcaption></figure><div><h3>为什么像一组小条纹</h3><p>Gabor 核可理解为“高斯包络 × 余弦条纹”：\(g(x,y)=\exp[-(x'^2+\gamma^2y'^2)/(2\sigma^2)]\cos(2\pi x'/\lambda+\phi)\)，其中 \(x'=x\cos\theta+y\sin\theta\)、\(y'=-x\sin\theta+y\cos\theta\)。\(\theta\) 控制方向、\(\sigma\) 控制范围、\(\lambda\) 控制频率、\(\phi\) 控制相位。图中三组分别展示位置/旋转、尺度、频率/相位变化；亮暗代表正负权重，灰色接近零。</p></div></div>
 <div class="slide-card"><figure><img src="figures/fig-9-19.png" alt="图9.19：两类学习方法得到的类似 Gabor 的局部权重图案" loading="lazy"><figcaption>第 26 页 · 图 9.19 · Goodfellow (2016)</figcaption></figure><div><h3>“像 Gabor”不等于预设 Gabor</h3><p>训练后的许多局部权重呈现有方向的明暗条纹，也有颜色对立图案。<strong>左图</strong>来自无监督 spike-and-slab sparse coding 学到的图块权重；<strong>右图</strong>才是有监督 convolutional maxout network 第一层的卷积核。两组来源不同，它们也并非个个都是严格的 Gabor 函数；图中显示的是权重，不是某张图片的激活值。</p></div></div>
 <h3>末页四种架构：分别解决什么</h3>
-<div class="table-scroll"><table><thead><tr><th>讲义名称</th><th>抓住一个设计点</th></tr></thead><tbody><tr><td>Spatial Transducer Net</td><td>保留空间网格，从输入网格产生对应的输出网格；讲义所用名称不要混同为 <em>Spatial Transformer Network</em>。</td></tr><tr><td>All Convolutional Net</td><td>用跨步卷积缩小网格，减少对独立池化层的依赖。</td></tr><tr><td>Inception</td><td>并行的不同尺度分支提取特征，常用 1×1 卷积控制通道数与计算量。</td></tr><tr><td>ResNet</td><td>残差块 \(y=x+F(x)\) 提供恒等捷径，使很深网络更容易优化；它不保证任何设置下梯度都绝不消失。</td></tr></tbody></table></div>
+<div class="table-scroll"><table><thead><tr><th>讲义名称</th><th>抓住一个设计点</th></tr></thead><tbody><tr><td>Spatial Transducer Net</td><td>各层保持卷积形式，从输入网格产生对应的空间输出网格；讲义所用名称不要混同为 <em>Spatial Transformer Network</em>。</td></tr><tr><td>All Convolutional Net</td><td>用跨步卷积缩小网格，减少对独立池化层的依赖。</td></tr><tr><td>Inception</td><td>并行的不同尺度分支提取特征，常用 1×1 卷积控制通道数与计算量。</td></tr><tr><td>ResNet</td><td>残差块 \(y=x+F(x)\) 提供恒等捷径，使很深网络更容易优化；它不保证任何设置下梯度都绝不消失。</td></tr></tbody></table></div>
 
 <h2 id="practice">7. 最小代码：手算与自动求导对照</h2>
 <p>下面直接复现图 9.1 的 2×2 例子。PyTorch 的 <code>F.conv2d</code> 按 <code>[批量, 输入通道, 高, 宽]</code> 读取输入，核按 <code>[输出通道, 输入通道/组数, 核高, 核宽]</code> 存放。</p>
