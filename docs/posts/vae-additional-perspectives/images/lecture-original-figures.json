@@ -1,0 +1,162 @@
+{
+  "source_pdf_relative_to_workspace": "lecture_notes.pdf",
+  "source_sha256": "d61ddac4329c49043c633c47fadd5293204bce4c9ab28e994a04c79e7251e622",
+  "source_title": "An Introduction to Flow Matching and Diffusion Models",
+  "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf",
+  "authors": [
+    "Peter Holderrieth",
+    "Ezra Erives"
+  ],
+  "source_year": 2026,
+  "source_page_size_points": [
+    612,
+    792
+  ],
+  "dpi": 300,
+  "coordinate_system": "PDF points (1/72 inch), top-left origin, [left, top, right, bottom]",
+  "renderer": "pdftoppm (Poppler)",
+  "renderer_version": "pdftoppm version 24.04.0\nCopyright 2005-2024 The Poppler Developers - http://poppler.freedesktop.org\nCopyright 1996-2011, 2022 Glyph & Cog, LLC",
+  "processing": "Original PDF regions rendered directly; no redrawing, OCR replacement, or resizing",
+  "reproduction_script": "learning-notes/tools/extract_vae_perspectives_figures.py",
+  "figures": [
+    {
+      "filename": "proposition-3-kl-chain-rule.png",
+      "kind": "proposition",
+      "label": "Proposition 3",
+      "pdf_page_1_based": 78,
+      "crop_points_top_left_ltrb": [
+        54,
+        165,
+        558,
+        331
+      ],
+      "content": "Entire original shaded Proposition 3 box, including the chain rule and data-processing inequality (138)",
+      "reading_notes": [
+        "The joint KL equals the x-marginal KL plus the expected conditional posterior KL.",
+        "The proof is transcribed and expanded in the article; this crop preserves the original proposition only."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=78",
+      "pixel_crop_ltrb": [
+        225,
+        687,
+        2325,
+        1380
+      ],
+      "image_size_px": [
+        2100,
+        693
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/proposition-3-kl-chain-rule.png",
+      "output_sha256": "66a3f741eb85cab8ff71c98f0513303a3a8c22e9da2738b4d1a9df786fd740e6"
+    },
+    {
+      "filename": "remark-42-joint-matching.png",
+      "kind": "remark",
+      "label": "Remark 42",
+      "pdf_page_1_based": 80,
+      "crop_points_top_left_ltrb": [
+        54,
+        271,
+        558,
+        454
+      ],
+      "content": "Entire original Remark 42 box concerning joint matching and the aggregate latent marginal",
+      "reading_notes": [
+        "Original wording is preserved; matching joint distributions alone does not guarantee low paired reconstruction distortion.",
+        "The article provides a counterexample and distinguishes distributional matching from reconstruction quality."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=80",
+      "pixel_crop_ltrb": [
+        225,
+        1129,
+        2325,
+        1892
+      ],
+      "image_size_px": [
+        2100,
+        763
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/remark-42-joint-matching.png",
+      "output_sha256": "3cc0b46a261cb716c56011f1fe269c8421d407aaaef8ba9e2dc83c137552c9d5"
+    },
+    {
+      "filename": "remark-43-variational.png",
+      "kind": "remark",
+      "label": "Remark 43",
+      "pdf_page_1_based": 80,
+      "crop_points_top_left_ltrb": [
+        54,
+        465,
+        558,
+        612
+      ],
+      "content": "Entire original Remark 43 box, including the posterior identity and the source's equals-zero typo",
+      "reading_notes": [
+        "The source's equality of two joint distributions to zero is a typographical error and is not silently edited in this crop.",
+        "Even an exact posterior alone does not guarantee matching the model marginal to the data distribution.",
+        "The article separately explains these errors and the meaning of variational inference."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=80",
+      "pixel_crop_ltrb": [
+        225,
+        1937,
+        2325,
+        2550
+      ],
+      "image_size_px": [
+        2100,
+        613
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/remark-43-variational.png",
+      "output_sha256": "abea559c0a0cef2c17781133db963cb4bae6629d109a5d9b693998dff1b0f26d"
+    },
+    {
+      "filename": "figure-22-reconstruction-rate-distortion.png",
+      "kind": "figure",
+      "label": "Figure 22",
+      "pdf_page_1_based": 82,
+      "crop_points_top_left_ltrb": [
+        54,
+        75,
+        558,
+        310
+      ],
+      "content": "Both complete panels, all latent visualizations and rates/distortions, and the entire Figure 22 caption",
+      "reading_notes": [
+        "The left panel illustrates that improved reconstruction FID can accompany worse generation FID across tokenizer configurations.",
+        "The right panel distinguishes perceptual compression from semantic compression on a rate-distortion diagram.",
+        "The caption labels both panels Right; the article explains this source label typo and interprets panels by their actual positions.",
+        "This is an empirical illustration, not a theorem that reconstruction and generation must always trade off."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=82",
+      "pixel_crop_ltrb": [
+        225,
+        312,
+        2325,
+        1292
+      ],
+      "image_size_px": [
+        2100,
+        980
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/figure-22-reconstruction-rate-distortion.png",
+      "output_sha256": "49b073d051a5f74d3a07b914b4d7a16bfefb02fc21ec6d0eaa0c7144cc6ea7e8"
+    }
+  ]
+}

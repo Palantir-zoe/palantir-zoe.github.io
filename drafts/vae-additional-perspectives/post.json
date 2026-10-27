@@ -1,0 +1,6 @@
+{
+  "slug": "vae-additional-perspectives",
+  "title": "Additional Perspectives on VAEs：联合分布、ELBO 与变分推断",
+  "section": "附录 D · 审阅稿",
+  "description": "从编码器与解码器的联合分布出发，完整推导 KL 链式法则、VAE 损失、ELBO、真实后验与变分推断；通过高斯实例、重建与生成采样器、率失真分析解释潜空间建模，并逐项核对讲义中的条件与勘误。"
+}

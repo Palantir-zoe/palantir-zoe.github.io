@@ -42,6 +42,12 @@
     "description": "从离散状态、概率路径与连续时间马尔可夫链出发，逐步推导跳转率、Kolmogorov 前向方程、条件与边缘生成器、掩码插值及去噪训练，串起离散扩散模型的训练与语言生成。"
   },
   {
+    "slug": "vae-additional-perspectives",
+    "title": "Additional Perspectives on VAEs：联合分布、ELBO 与变分推断",
+    "section": "附录 D · 审阅稿",
+    "description": "从编码器与解码器的联合分布出发，完整推导 KL 链式法则、VAE 损失、ELBO、真实后验与变分推断；通过高斯实例、重建与生成采样器、率失真分析解释潜空间建模，并逐项核对讲义中的条件与勘误。"
+  },
+  {
     "slug": "seq2seq-attention",
     "title": "图解 Seq2Seq 与 Attention：中文译注",
     "section": "NLP 阅读笔记",
