@@ -1,0 +1,234 @@
+{
+  "source_pdf_relative_to_workspace": "lecture_notes.pdf",
+  "source_sha256": "d61ddac4329c49043c633c47fadd5293204bce4c9ab28e994a04c79e7251e622",
+  "source_title": "An Introduction to Flow Matching and Diffusion Models",
+  "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf",
+  "authors": [
+    "Peter Holderrieth",
+    "Ezra Erives"
+  ],
+  "source_year": 2026,
+  "source_page_size_points": [
+    612,
+    792
+  ],
+  "dpi": 300,
+  "coordinate_system": "PDF points (1/72 inch), top-left origin, [left, top, right, bottom]",
+  "renderer": "pdftoppm (Poppler)",
+  "renderer_version": "pdftoppm version 24.04.0\nCopyright 2005-2024 The Poppler Developers - http://poppler.freedesktop.org\nCopyright 1996-2011, 2022 Glyph & Cog, LLC",
+  "processing": "Original PDF regions rendered directly; no redrawing, OCR replacement, or resizing",
+  "reproduction_script": "learning-notes/tools/extract_discrete_diffusion_figures.py",
+  "figures": [
+    {
+      "filename": "figure-17-ctmc-trajectory.png",
+      "kind": "figure",
+      "label": "Figure 17",
+      "pdf_page_1_based": 54,
+      "crop_points_top_left_ltrb": [
+        304,
+        387,
+        558,
+        570
+      ],
+      "content": "Entire continuous-time Markov-chain trajectory with three discrete states, including the complete Figure 17 caption",
+      "reading_notes": [
+        "Time is continuous, while the state takes values in a discrete set.",
+        "Horizontal segments show a state being retained between random jump times; filled and open circles distinguish the state at a jump from its preceding value.",
+        "The example has sequence length d = 1 and three possible states."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=54",
+      "pixel_crop_ltrb": [
+        1266,
+        1612,
+        2325,
+        2375
+      ],
+      "image_size_px": [
+        1059,
+        763
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/figure-17-ctmc-trajectory.png",
+      "output_sha256": "9b5de99b7c7e546d9b959689678cf3cd670a0b7bdce707e8041b98ca494afc64"
+    },
+    {
+      "filename": "figure-18-factorized-rate-matrix.png",
+      "kind": "figure",
+      "label": "Figure 18",
+      "pdf_page_1_based": 58,
+      "crop_points_top_left_ltrb": [
+        54,
+        81,
+        558,
+        297
+      ],
+      "content": "Both general and factorized rate-matrix diagrams, with the complete Figure 18 caption",
+      "reading_notes": [
+        "The grid illustrates a state space of sequences with d = 2 positions; each axis corresponds to one position.",
+        "An individual jump of a factorized CTMC changes only one sequence position, so arrows are axis-aligned.",
+        "Parallel-token Euler sampling can nevertheless change several positions within one finite step, with higher-order simultaneous-update probability."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=58",
+      "pixel_crop_ltrb": [
+        225,
+        337,
+        2325,
+        1238
+      ],
+      "image_size_px": [
+        2100,
+        901
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/figure-18-factorized-rate-matrix.png",
+      "output_sha256": "c191c23d6dafbd0fccfa8f42502e353bbea0b01d9e74f6895c675a1ffb8ff6b3"
+    },
+    {
+      "filename": "algorithm-7-factorized-ctmc-sampling.png",
+      "kind": "algorithm",
+      "label": "Algorithm 7",
+      "pdf_page_1_based": 58,
+      "crop_points_top_left_ltrb": [
+        54,
+        367,
+        558,
+        657
+      ],
+      "content": "Complete sampling algorithm: title, Require line, all twelve numbered steps, per-position Euler probability formula, and enclosing rules",
+      "reading_notes": [
+        "The factorized rates are evaluated from the full current sequence before the per-position parallel updates.",
+        "For a finite step h, each position either stays or jumps according to a categorical Euler approximation.",
+        "The step size must make all categorical probabilities nonnegative; the displayed formula is not an unconditional guarantee for arbitrary h."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=58",
+      "pixel_crop_ltrb": [
+        225,
+        1529,
+        2325,
+        2738
+      ],
+      "image_size_px": [
+        2100,
+        1209
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/algorithm-7-factorized-ctmc-sampling.png",
+      "output_sha256": "56df9394cc3bd6215432b0730432007ba5746a5393a940a7a4c3fc37db935a54"
+    },
+    {
+      "filename": "figure-19-discrete-probability-path.png",
+      "kind": "figure",
+      "label": "Figure 19",
+      "pdf_page_1_based": 60,
+      "crop_points_top_left_ltrb": [
+        54,
+        299,
+        558,
+        562
+      ],
+      "content": "All ten panels of the conditional and marginal discrete probability paths, with the complete Figure 19 caption",
+      "reading_notes": [
+        "Each grid cell is a discrete sequence state with d = 2; color indicates its probability mass.",
+        "The top row fixes one terminal data state, marked by an orange cross; the bottom row averages over data states.",
+        "These panels depict distributions, rather than successive states of one sampled trajectory.",
+        "In this chapter the generation-time direction runs from the initial distribution at t = 0 to the data distribution at t = 1."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=60",
+      "pixel_crop_ltrb": [
+        225,
+        1245,
+        2325,
+        2342
+      ],
+      "image_size_px": [
+        2100,
+        1097
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/figure-19-discrete-probability-path.png",
+      "output_sha256": "0ad910c2804fc1badd6acba11541caad1e97da51bcb2f06fe2781a8044d0439f"
+    },
+    {
+      "filename": "algorithm-8-discrete-diffusion-training.png",
+      "kind": "algorithm",
+      "label": "Algorithm 8",
+      "pdf_page_1_based": 65,
+      "crop_points_top_left_ltrb": [
+        54,
+        80,
+        558,
+        413
+      ],
+      "content": "Complete discrete-diffusion training algorithm: title, all Require lines, all fourteen numbered steps, corruption sampling, posterior prediction, loss, and parameter update",
+      "reading_notes": [
+        "A Bernoulli value m_j = 1 retains the clean token z_j; m_j = 0 draws that position from the initial-noise marginal.",
+        "The network sees the whole noisy sequence and time, and predicts a vocabulary distribution for each position.",
+        "The training target is the original terminal token z_j; the displayed objective sums token-wise negative log-likelihoods."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=65",
+      "pixel_crop_ltrb": [
+        225,
+        333,
+        2325,
+        1721
+      ],
+      "image_size_px": [
+        2100,
+        1388
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/algorithm-8-discrete-diffusion-training.png",
+      "output_sha256": "c5500f09efed81ddc4ab0959df0052d1e8df2b205c07f847a4a335c1652baa3f"
+    },
+    {
+      "filename": "figure-20-masked-diffusion-language-model.png",
+      "kind": "figure",
+      "label": "Figure 20",
+      "pdf_page_1_based": 65,
+      "crop_points_top_left_ltrb": [
+        54,
+        434,
+        558,
+        593
+      ],
+      "content": "All four rows of the masked language-model trajectory, including time labels, seven token positions, and the complete Figure 20 caption",
+      "reading_notes": [
+        "The trajectory proceeds from all [MASK] tokens at t = 0 to a full sentence at t = 1.",
+        "Several different positions can be revealed in parallel, rather than strictly from left to right.",
+        "The diagram is an illustrative trajectory, not a claim that general CTMC sampling can never revise an existing token."
+      ],
+      "source_url": "https://diffusion.csail.mit.edu/2026/docs/lecture_notes.pdf#page=65",
+      "pixel_crop_ltrb": [
+        225,
+        1808,
+        2325,
+        2471
+      ],
+      "image_size_px": [
+        2100,
+        663
+      ],
+      "png_dpi_metadata": [
+        299.9994,
+        299.9994
+      ],
+      "draft_relative_path": "images/figure-20-masked-diffusion-language-model.png",
+      "output_sha256": "16a66f86ad6315941cfe2a6a1071afaad83b555823dc33aa9dcb2a7f777b5a95"
+    }
+  ]
+}

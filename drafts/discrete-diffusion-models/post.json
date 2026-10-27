@@ -1,0 +1,6 @@
+{
+  "slug": "discrete-diffusion-models",
+  "title": "Discrete Diffusion Models：从 CTMC 到扩散语言模型",
+  "section": "第 7 章",
+  "description": "从离散状态、概率路径与连续时间马尔可夫链出发，逐步推导跳转率、Kolmogorov 前向方程、条件与边缘生成器、掩码插值及去噪训练，串起离散扩散模型的训练与语言生成。"
+}

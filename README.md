@@ -5,7 +5,7 @@
 - 仓库：<https://github.com/Palantir-zoe/palantir-zoe.github.io>
 - 公开网址：<https://palantir-zoe.github.io/>
 
-当前公开文章分别位于 `docs/posts/introduction/`、`docs/posts/flow-models/`、`docs/posts/diffusion-models/`、`docs/posts/flow-matching/`、`docs/posts/score-matching/`、`docs/posts/guidance/`，各目录内的 `index.html` 是对应正文。
+当前公开文章分别位于 `docs/posts/introduction/`、`docs/posts/flow-models/`、`docs/posts/diffusion-models/`、`docs/posts/flow-matching/`、`docs/posts/score-matching/`、`docs/posts/guidance/`、`docs/posts/discrete-diffusion-models/`，各目录内的 `index.html` 是对应正文。
 
 PRML 第九章《混合模型与 EM》中文精读笔记位于 `docs/posts/prml-mixture-models-em/`，已整理 K-means、高斯混合、Bernoulli 混合、贝叶斯线性回归及一般 EM 的推导。可编辑分章节正文在 `tools/content/prml-ch09/`，使用 `python tools/render_prml_ch09.py` 重新生成页面与首页目录。原书 PDF 仅用于本地核对，不作为网站文件发布。
 
@@ -16,6 +16,8 @@ Flow Matching 已完成审核并发布，覆盖第 3 章的 3.1–3.3 节，包�
 Score Functions and Score Matching 已完成审核并发布，覆盖第 4 章的 4.1–4.3 节，包含原文 Figure 8–10、Algorithm 4、关键定理和完整 Summary 24。可编辑正文在 `tools/content/score-matching.html`；后续编辑、预览与发布步骤见 [维护说明](drafts/score-matching/README.md)。
 
 Guidance: How to Condition on a Prompt 已完成审核并发布，覆盖第 5 章的 5.1–5.2 节，包含原文 Figure 11–13、Algorithm 5 与 Summary 27。可编辑正文在 `tools/content/guidance.html`；后续编辑、预览与发布步骤见 [维护说明](drafts/guidance/README.md)。
+
+Discrete Diffusion Models 第 7 章笔记覆盖 CTMC、速率矩阵、KFE、离散边缘化、交叉熵训练与掩码扩散语言模型，包含原文 Figure 17–20、Algorithm 7–8 及同一短句的完整手算。核心解释与推导都在同一篇正文内。可编辑正文在 `tools/content/discrete-diffusion-models.html`；后续编辑、预览与发布步骤见 [维护说明](drafts/discrete-diffusion-models/README.md)。第 6 章仍为本地草稿，本次只发布第 7 章。
 
 ## 更新内容
 
